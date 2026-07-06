@@ -27,8 +27,10 @@ public class Main {
         });
         
         // Credenciales de prueba
-        // user: admin, password: root
-        // ID alumno: EST2026101
+        // user: admin, password: root, rol: Administrador
+        // user: biblio1, password: password123, rol: Bibliotecario
+        // user: estudiante1, password: estudiante123, rol: Estudiante
+        // ID alumno: EST2026101 para pruebas 
         
     }
 }

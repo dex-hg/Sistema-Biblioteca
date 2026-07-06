@@ -3,9 +3,11 @@ package biblioteca.vista;
 import biblioteca.controlador.PrestamoController;
 import biblioteca.modelo.DetallePrestamo;
 import biblioteca.modelo.Estudiante;
+import biblioteca.modelo.EstadoPrestamo;
 import biblioteca.modelo.Libro;
 import biblioteca.modelo.Prestamo;
 import biblioteca.modelo.Usuario;
+import biblioteca.servicios.PrestamoService;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.FlowLayout;
@@ -14,10 +16,15 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Optional;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -61,10 +68,16 @@ public class PrestamosPanel extends JPanel {
     private JButton btnBuscarPrestamo;
     private JLabel lblDetallesPrestamoVal;
     private JButton btnConfirmarDevolucion;
+    private JTable tablaPrestamosPendientes;
+    private DefaultTableModel modeloPrestamosPendientes;
 
     // Tabla general de préstamos en el sistema
     private JTable tablaPrestamos;
     private DefaultTableModel modeloPrestamos;
+    private JComboBox<String> cbFiltroDiasPrestamo;
+    private JComboBox<String> cbOrdenDiasPrestamo;
+    private JButton btnToggleHistorialPrestamos;
+    private boolean mostrarHistorialCompletoPrestamos = false;
 
     public PrestamosPanel(Usuario usuario) {
         this.usuarioLogueado = usuario;
@@ -78,10 +91,15 @@ public class PrestamosPanel extends JPanel {
         setOpaque(false);
 
         // Título Principal
-        JLabel lblTitulo = new JLabel("Operaciones de Préstamos y Devoluciones");
+        JLabel lblTitulo = new JLabel(esEstudiante() ? "Mis Préstamos" : "Operaciones de Préstamos y Devoluciones");
         lblTitulo.setFont(new Font("Segoe UI", Font.BOLD, 20));
         lblTitulo.setForeground(new Color(33, 37, 41));
         add(lblTitulo, BorderLayout.NORTH);
+
+        if (esEstudiante()) {
+            add(crearPanelConsultaEstudiante(), BorderLayout.CENTER);
+            return;
+        }
 
         // Crear Pestañas (TabbedPane)
         JTabbedPane tabbedPane = new JTabbedPane();
@@ -90,18 +108,98 @@ public class PrestamosPanel extends JPanel {
         JPanel panelRegistro = crearPanelRegistroPrestamo();
         JPanel panelDevolucion = crearPanelDevolucion();
 
-        tabbedPane.addTab("📖 Registrar Préstamo", panelRegistro);
-        tabbedPane.addTab("🔄 Registrar Devolución", panelDevolucion);
+        tabbedPane.addTab("Registrar Préstamo", panelRegistro);
+        tabbedPane.addTab("Registrar Devolución", panelDevolucion);
 
         // SplitPane para colocar las pestañas arriba/izquierda y la tabla general de préstamos al lado/abajo
         JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         splitPane.setOpaque(false);
         splitPane.setTopComponent(tabbedPane);
         splitPane.setBottomComponent(crearPanelTablaGeneralPrestamos());
-        splitPane.setDividerLocation(380);
-        splitPane.setResizeWeight(0.5);
+        splitPane.setDividerLocation(520);
+        splitPane.setResizeWeight(0.65);
 
         add(splitPane, BorderLayout.CENTER);
+    }
+
+    private boolean esEstudiante() {
+        return usuarioLogueado.getRol() != null && usuarioLogueado.getRol().getId() == 3;
+    }
+
+    private JPanel crearPanelConsultaEstudiante() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setOpaque(false);
+
+        JPanel panelSuperior = new JPanel(new BorderLayout(10, 10));
+        panelSuperior.setOpaque(false);
+
+        JLabel lblInfo = new JLabel("Consulta primero los libros pendientes de devolución y revisa qué debes regresar pronto.");
+        lblInfo.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblInfo.setForeground(new Color(73, 80, 87));
+        panelSuperior.add(lblInfo, BorderLayout.NORTH);
+
+        JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filtros.setOpaque(false);
+        filtros.add(new JLabel("Filtrar:"));
+        cbFiltroDiasPrestamo = new JComboBox<>(new String[]{"Pendientes", "Vencidos", "Vencen en 3 días", "Con más tiempo"});
+        filtros.add(cbFiltroDiasPrestamo);
+        filtros.add(new JLabel("Ordenar:"));
+        cbOrdenDiasPrestamo = new JComboBox<>(new String[]{"Menos días primero", "Más días primero"});
+        filtros.add(cbOrdenDiasPrestamo);
+        btnToggleHistorialPrestamos = new JButton("Mostrar historial completo");
+        btnToggleHistorialPrestamos.putClientProperty("JButton.buttonType", "roundRect");
+        filtros.add(btnToggleHistorialPrestamos);
+        panelSuperior.add(filtros, BorderLayout.CENTER);
+
+        panel.add(panelSuperior, BorderLayout.NORTH);
+
+        modeloPrestamos = new DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID Préstamo", "Libros", "Fecha Préstamo", "Fecha Límite", "Fecha Devolución", "Estado", "Días restantes"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        tablaPrestamos = new JTable(modeloPrestamos);
+        tablaPrestamos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tablaPrestamos.setRowHeight(24);
+        tablaPrestamos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        lblDetallesPrestamoVal = new JLabel("<html>Seleccione un préstamo para ver los libros asociados.</html>");
+        lblDetallesPrestamoVal.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        lblDetallesPrestamoVal.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(222, 226, 230)),
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)
+        ));
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        split.setTopComponent(new JScrollPane(tablaPrestamos));
+        split.setBottomComponent(new JScrollPane(lblDetallesPrestamoVal));
+        split.setResizeWeight(0.72);
+        split.setDividerLocation(360);
+        split.setOpaque(false);
+        panel.add(split, BorderLayout.CENTER);
+
+        tablaPrestamos.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaPrestamos.getSelectedRow() != -1) {
+                int row = tablaPrestamos.convertRowIndexToModel(tablaPrestamos.getSelectedRow());
+                int idPrestamo = Integer.parseInt(modeloPrestamos.getValueAt(row, 0).toString());
+                cargarDetallePrestamoEstudiante(idPrestamo);
+            }
+        });
+        cbFiltroDiasPrestamo.addActionListener(e -> actualizarTablaPrestamos());
+        cbOrdenDiasPrestamo.addActionListener(e -> actualizarTablaPrestamos());
+        btnToggleHistorialPrestamos.addActionListener(e -> {
+            mostrarHistorialCompletoPrestamos = !mostrarHistorialCompletoPrestamos;
+            btnToggleHistorialPrestamos.setText(mostrarHistorialCompletoPrestamos
+                    ? "Ocultar historial devuelto"
+                    : "Mostrar historial completo");
+            actualizarTablaPrestamos();
+        });
+
+        return panel;
     }
 
     private JPanel crearPanelRegistroPrestamo() {
@@ -236,22 +334,17 @@ public class PrestamosPanel extends JPanel {
     }
 
     private JPanel crearPanelDevolucion() {
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        panel.setPreferredSize(new Dimension(0, 440));
 
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.gridx = 0;
-        gbc.weightx = 1.0;
+        JPanel panelSuperior = new JPanel(new BorderLayout(10, 10));
+        panelSuperior.setOpaque(false);
 
-        int row = 0;
-
-        JLabel lblDevDesc = new JLabel("Ingrese el ID del Préstamo para procesar el retorno del libro:");
+        JLabel lblDevDesc = new JLabel("Seleccione un préstamo pendiente o ingrese su ID para procesar la devolución:");
         lblDevDesc.setFont(new Font("Segoe UI", Font.BOLD, 13));
-        gbc.gridy = row++;
-        panel.add(lblDevDesc, gbc);
+        panelSuperior.add(lblDevDesc, BorderLayout.NORTH);
 
         JPanel pSearch = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         pSearch.setOpaque(false);
@@ -263,9 +356,43 @@ public class PrestamosPanel extends JPanel {
         btnBuscarPrestamo.setForeground(Color.WHITE);
         btnBuscarPrestamo.putClientProperty("JButton.buttonType", "roundRect");
         pSearch.add(btnBuscarPrestamo);
-        
-        gbc.gridy = row++;
-        panel.add(pSearch, gbc);
+
+        panelSuperior.add(pSearch, BorderLayout.CENTER);
+        panel.add(panelSuperior, BorderLayout.NORTH);
+
+        modeloPrestamosPendientes = new DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID Préstamo", "Estudiante", "Fecha Préstamo", "Estado", "Días activo"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+
+        tablaPrestamosPendientes = new JTable(modeloPrestamosPendientes);
+        tablaPrestamosPendientes.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tablaPrestamosPendientes.setRowHeight(24);
+        tablaPrestamosPendientes.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+        JPanel panelTablaPendientes = new JPanel(new BorderLayout(5, 5));
+        panelTablaPendientes.setBackground(Color.WHITE);
+        panelTablaPendientes.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(222, 226, 230)),
+                "Préstamos pendientes de devolución",
+                0, 0,
+                new Font("Segoe UI", Font.BOLD, 12),
+                new Color(73, 80, 87)
+        ));
+        JScrollPane scrollPendientes = new JScrollPane(tablaPrestamosPendientes);
+        scrollPendientes.setPreferredSize(new Dimension(0, 150));
+        panelTablaPendientes.setMinimumSize(new Dimension(0, 140));
+        panelTablaPendientes.add(scrollPendientes, BorderLayout.CENTER);
+
+        JPanel panelInferior = new JPanel(new BorderLayout(10, 10));
+        panelInferior.setOpaque(false);
+        panelInferior.setMinimumSize(new Dimension(0, 190));
+        panelInferior.setPreferredSize(new Dimension(0, 210));
 
         lblDetallesPrestamoVal = new JLabel("<html>Detalles del préstamo:<br>- Estudiante:<br>- Libro:<br>- Fecha Préstamo:<br>- Estado:</html>");
         lblDetallesPrestamoVal.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -273,8 +400,10 @@ public class PrestamosPanel extends JPanel {
                 BorderFactory.createLineBorder(new Color(222, 226, 230)),
                 BorderFactory.createEmptyBorder(15, 15, 15, 15)
         ));
-        gbc.gridy = row++;
-        panel.add(lblDetallesPrestamoVal, gbc);
+        JScrollPane scrollDetalles = new JScrollPane(lblDetallesPrestamoVal);
+        scrollDetalles.setPreferredSize(new Dimension(0, 155));
+        scrollDetalles.setMinimumSize(new Dimension(0, 135));
+        panelInferior.add(scrollDetalles, BorderLayout.CENTER);
 
         btnConfirmarDevolucion = new JButton("Procesar Devolución y Retorno");
         btnConfirmarDevolucion.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -282,20 +411,34 @@ public class PrestamosPanel extends JPanel {
         btnConfirmarDevolucion.setForeground(Color.WHITE);
         btnConfirmarDevolucion.setEnabled(false);
         btnConfirmarDevolucion.putClientProperty("JButton.buttonType", "roundRect");
-        btnConfirmarDevolucion.setPreferredSize(new Dimension(0, 40));
-        
-        gbc.gridy = row++;
-        panel.add(btnConfirmarDevolucion, gbc);
+        btnConfirmarDevolucion.setPreferredSize(new Dimension(260, 42));
 
-        // Relleno inferior
-        gbc.weighty = 1.0;
-        gbc.gridy = row++;
-        panel.add(new JLabel(), gbc);
+        JPanel panelAccion = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        panelAccion.setOpaque(false);
+        panelAccion.add(btnConfirmarDevolucion);
+        panelInferior.add(panelAccion, BorderLayout.SOUTH);
+
+        JSplitPane splitDevolucion = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+        splitDevolucion.setTopComponent(panelTablaPendientes);
+        splitDevolucion.setBottomComponent(panelInferior);
+        splitDevolucion.setResizeWeight(0.48);
+        splitDevolucion.setDividerLocation(190);
+        splitDevolucion.setBorder(null);
+        splitDevolucion.setOpaque(false);
+        panel.add(splitDevolucion, BorderLayout.CENTER);
 
         // Eventos
         btnBuscarPrestamo.addActionListener(e -> buscarPrestamoParaDevolver());
         txtIdPrestamoDev.addActionListener(e -> buscarPrestamoParaDevolver());
         btnConfirmarDevolucion.addActionListener(e -> confirmarDevolucion());
+        tablaPrestamosPendientes.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaPrestamosPendientes.getSelectedRow() != -1) {
+                int row = tablaPrestamosPendientes.convertRowIndexToModel(tablaPrestamosPendientes.getSelectedRow());
+                String id = modeloPrestamosPendientes.getValueAt(row, 0).toString();
+                txtIdPrestamoDev.setText(id);
+                cargarPrestamoParaDevolver(Integer.parseInt(id), false);
+            }
+        });
 
         return panel;
     }
@@ -339,6 +482,11 @@ public class PrestamosPanel extends JPanel {
     }
 
     public void actualizarTablaPrestamos() {
+        if (esEstudiante()) {
+            actualizarTablaPrestamosEstudiante();
+            return;
+        }
+
         ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerTodos();
         modeloPrestamos.setRowCount(0);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -352,6 +500,101 @@ public class PrestamosPanel extends JPanel {
                 p.getFechaPrestamo() != null ? p.getFechaPrestamo().format(formatter) : "",
                 fDev,
                 p.getEstado() != null ? p.getEstado().name() : ""
+            });
+        }
+        actualizarTablaPrestamosPendientes();
+    }
+
+    private void actualizarTablaPrestamosEstudiante() {
+        ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerPrestamosPorEstudiante(usuarioLogueado.getId());
+        ArrayList<Prestamo> prestamosFiltrados = new ArrayList<>();
+        for (int i = 0; i < prestamos.size(); i++) {
+            Prestamo p = prestamos.obtener(i);
+            if (!mostrarHistorialCompletoPrestamos && p.getEstado() == EstadoPrestamo.DEVUELTO) {
+                continue;
+            }
+            if (!cumpleFiltroDias(p)) {
+                continue;
+            }
+            prestamosFiltrados.add(p);
+        }
+
+        Comparator<Prestamo> comparadorDias = Comparator.comparingInt(this::calcularDiasRestantesOrden);
+        if ("Más días primero".equals(cbOrdenDiasPrestamo != null ? cbOrdenDiasPrestamo.getSelectedItem() : "")) {
+            comparadorDias = comparadorDias.reversed();
+        }
+        prestamosFiltrados.sort(comparadorDias);
+
+        modeloPrestamos.setRowCount(0);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        for (Prestamo p : prestamosFiltrados) {
+            LocalDate fechaPrestamo = p.getFechaPrestamo();
+            LocalDate fechaLimite = fechaPrestamo != null
+                    ? fechaPrestamo.plusDays(PrestamoService.MAX_DIAS_PRESTAMO)
+                    : null;
+            String estado = p.getEstado() != null ? p.getEstado().name() : "";
+            String diasRestantes = "-";
+            if (fechaLimite != null && p.getEstado() != EstadoPrestamo.DEVUELTO) {
+                long dias = ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
+                diasRestantes = dias >= 0 ? String.valueOf(dias) : "Vencido hace " + Math.abs(dias) + " días";
+            }
+            modeloPrestamos.addRow(new Object[]{
+                p.getId(),
+                construirResumenLibrosTabla(p.getId()),
+                fechaPrestamo != null ? fechaPrestamo.format(formatter) : "",
+                fechaLimite != null ? fechaLimite.format(formatter) : "",
+                p.getFechaDevolucion() != null ? p.getFechaDevolucion().format(formatter) : "-",
+                estado,
+                diasRestantes
+            });
+        }
+    }
+
+    private boolean cumpleFiltroDias(Prestamo prestamo) {
+        String filtro = cbFiltroDiasPrestamo != null ? cbFiltroDiasPrestamo.getSelectedItem().toString() : "Pendientes";
+        if (prestamo.getEstado() == EstadoPrestamo.DEVUELTO) {
+            return mostrarHistorialCompletoPrestamos;
+        }
+
+        int diasRestantes = calcularDiasRestantesOrden(prestamo);
+        return switch (filtro) {
+            case "Vencidos" -> diasRestantes < 0;
+            case "Vencen en 3 días" -> diasRestantes >= 0 && diasRestantes <= 3;
+            case "Con más tiempo" -> diasRestantes > 3;
+            default -> true;
+        };
+    }
+
+    private int calcularDiasRestantesOrden(Prestamo prestamo) {
+        if (prestamo.getFechaPrestamo() == null) {
+            return Integer.MAX_VALUE;
+        }
+        if (prestamo.getEstado() == EstadoPrestamo.DEVUELTO) {
+            return Integer.MAX_VALUE - 1;
+        }
+        LocalDate fechaLimite = prestamo.getFechaPrestamo().plusDays(PrestamoService.MAX_DIAS_PRESTAMO);
+        return (int) ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
+    }
+
+    private void actualizarTablaPrestamosPendientes() {
+        if (modeloPrestamosPendientes == null) {
+            return;
+        }
+        ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerPrestamosActivos();
+        modeloPrestamosPendientes.setRowCount(0);
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        for (int i = 0; i < prestamos.size(); i++) {
+            Prestamo p = prestamos.obtener(i);
+            LocalDate fechaPrestamo = p.getFechaPrestamo();
+            long diasActivo = fechaPrestamo != null
+                    ? ChronoUnit.DAYS.between(fechaPrestamo, LocalDate.now())
+                    : 0;
+            modeloPrestamosPendientes.addRow(new Object[]{
+                p.getId(),
+                p.getEstudiante() != null ? p.getEstudiante().getNombreCompleto() : "Desconocido",
+                fechaPrestamo != null ? fechaPrestamo.format(formatter) : "",
+                p.getEstado() != null ? p.getEstado().name() : "",
+                diasActivo
             });
         }
     }
@@ -512,56 +755,149 @@ public class PrestamosPanel extends JPanel {
 
         try {
             int id = Integer.parseInt(idStr);
-            Optional<Prestamo> prestamoOpt = prestamoController.buscarPrestamoPorId(id);
-
-            if (prestamoOpt.isPresent()) {
-                Prestamo p = prestamoOpt.get();
-                idPrestamoBuscadoDev = p.getId();
-                
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                String fechaStr = p.getFechaPrestamo() != null ? p.getFechaPrestamo().format(formatter) : "-";
-                
-                String info = String.format("<html>Detalles del préstamo ID #%d:<br>"
-                        + "<b>Estudiante:</b> %s<br>"
-                        + "<b>Fecha Préstamo:</b> %s<br>"
-                        + "<b>Estado actual:</b> <font color='%s'>%s</font></html>",
-                        p.getId(),
-                        p.getEstudiante() != null ? p.getEstudiante().getNombreCompleto() : "Desconocido",
-                        fechaStr,
-                        "DEVUELTO".equalsIgnoreCase(p.getEstado() != null ? p.getEstado().name() : "") ? "green" : "red",
-                        p.getEstado() != null ? p.getEstado().name() : ""
-                );
-
-                lblDetallesPrestamoVal.setText(info);
-
-                if (p.getEstado() == biblioteca.modelo.EstadoPrestamo.DEVUELTO) {
-                    btnConfirmarDevolucion.setEnabled(false);
-                    JOptionPane.showMessageDialog(this, "Este préstamo ya figura como DEVUELTO.", "Devolución Previa", JOptionPane.INFORMATION_MESSAGE);
-                } else {
-                    btnConfirmarDevolucion.setEnabled(true);
-                }
-            } else {
-                idPrestamoBuscadoDev = -1;
-                lblDetallesPrestamoVal.setText("<html>Detalles del préstamo:<br><font color='red'>No se encontró el préstamo</font></html>");
-                btnConfirmarDevolucion.setEnabled(false);
-            }
+            cargarPrestamoParaDevolver(id, true);
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this, "El ID del préstamo debe ser numérico.", "Error de Formato", JOptionPane.ERROR_MESSAGE);
         }
     }
 
+    private void cargarPrestamoParaDevolver(int id, boolean mostrarAvisos) {
+        Optional<Prestamo> prestamoOpt = prestamoController.buscarPrestamoPorId(id);
+
+        if (prestamoOpt.isPresent()) {
+            Prestamo p = prestamoOpt.get();
+            idPrestamoBuscadoDev = p.getId();
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+            String fechaStr = p.getFechaPrestamo() != null ? p.getFechaPrestamo().format(formatter) : "-";
+            long diasActivo = p.getFechaPrestamo() != null
+                    ? ChronoUnit.DAYS.between(p.getFechaPrestamo(), LocalDate.now())
+                    : 0;
+            String estado = p.getEstado() != null ? p.getEstado().name() : "";
+            String colorEstado = p.getEstado() == EstadoPrestamo.DEVUELTO ? "green" : "#dc3545";
+
+            String info = String.format("<html>Detalles del préstamo ID #%d:<br>"
+                    + "<b>Estudiante:</b> %s<br>"
+                    + "<b>Fecha Préstamo:</b> %s<br>"
+                    + "<b>Días transcurridos:</b> %d<br>"
+                    + "<b>Estado actual:</b> <font color='%s'>%s</font><br>"
+                    + "<b>Libros prestados:</b><br>%s</html>",
+                    p.getId(),
+                    p.getEstudiante() != null ? p.getEstudiante().getNombreCompleto() : "Desconocido",
+                    fechaStr,
+                    diasActivo,
+                    colorEstado,
+                    estado,
+                    construirResumenLibrosPrestamo(p.getId())
+            );
+
+            lblDetallesPrestamoVal.setText(info);
+
+            if (p.getEstado() == EstadoPrestamo.DEVUELTO) {
+                btnConfirmarDevolucion.setEnabled(false);
+                if (mostrarAvisos) {
+                    JOptionPane.showMessageDialog(this, "Este préstamo ya figura como DEVUELTO.", "Devolución Previa", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } else {
+                btnConfirmarDevolucion.setEnabled(true);
+            }
+        } else {
+            idPrestamoBuscadoDev = -1;
+            lblDetallesPrestamoVal.setText("<html>Detalles del préstamo:<br><font color='red'>No se encontró el préstamo</font></html>");
+            btnConfirmarDevolucion.setEnabled(false);
+        }
+    }
+
+    private String construirResumenLibrosPrestamo(int idPrestamo) {
+        ListaEnlazada<DetallePrestamo> detalles = prestamoController.obtenerDetallesPrestamo(idPrestamo);
+        if (detalles.isEmpty()) {
+            return "- Sin detalle de libros registrado";
+        }
+
+        StringBuilder resumen = new StringBuilder();
+        for (int i = 0; i < detalles.size(); i++) {
+            DetallePrestamo detalle = detalles.obtener(i);
+            int idLibro = detalle.getLibro() != null ? detalle.getLibro().getId() : 0;
+            String titulo = prestamoController.buscarLibroPorId(idLibro)
+                    .map(Libro::getTitulo)
+                    .orElse("Libro ID " + idLibro);
+            resumen.append("- ")
+                    .append(titulo)
+                    .append(" (cant. ")
+                    .append(detalle.getCantidad())
+                    .append(")");
+            if (i < detalles.size() - 1) {
+                resumen.append("<br>");
+            }
+        }
+        return resumen.toString();
+    }
+
+    private String construirResumenLibrosTabla(int idPrestamo) {
+        ListaEnlazada<DetallePrestamo> detalles = prestamoController.obtenerDetallesPrestamo(idPrestamo);
+        if (detalles.isEmpty()) {
+            return "Sin detalle";
+        }
+
+        StringBuilder resumen = new StringBuilder();
+        for (int i = 0; i < detalles.size(); i++) {
+            DetallePrestamo detalle = detalles.obtener(i);
+            int idLibro = detalle.getLibro() != null ? detalle.getLibro().getId() : 0;
+            String titulo = prestamoController.buscarLibroPorId(idLibro)
+                    .map(Libro::getTitulo)
+                    .orElse("Libro ID " + idLibro);
+            if (i > 0) {
+                resumen.append(", ");
+            }
+            resumen.append(titulo);
+        }
+        return resumen.toString();
+    }
+
+    private void cargarDetallePrestamoEstudiante(int idPrestamo) {
+        Optional<Prestamo> prestamoOpt = prestamoController.buscarPrestamoPorId(idPrestamo);
+        if (prestamoOpt.isEmpty()) {
+            lblDetallesPrestamoVal.setText("<html>No se encontró el préstamo seleccionado.</html>");
+            return;
+        }
+
+        Prestamo prestamo = prestamoOpt.get();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        String fechaPrestamo = prestamo.getFechaPrestamo() != null
+                ? prestamo.getFechaPrestamo().format(formatter)
+                : "-";
+        String fechaLimite = prestamo.getFechaPrestamo() != null
+                ? prestamo.getFechaPrestamo().plusDays(PrestamoService.MAX_DIAS_PRESTAMO).format(formatter)
+                : "-";
+
+        lblDetallesPrestamoVal.setText(String.format("<html><b>Préstamo ID #%d</b><br>"
+                        + "<b>Fecha préstamo:</b> %s<br>"
+                        + "<b>Fecha límite:</b> %s<br>"
+                        + "<b>Estado:</b> %s<br>"
+                        + "<b>Libros:</b><br>%s</html>",
+                prestamo.getId(),
+                fechaPrestamo,
+                fechaLimite,
+                prestamo.getEstado() != null ? prestamo.getEstado().name() : "",
+                construirResumenLibrosPrestamo(idPrestamo)
+        ));
+    }
+
     private void confirmarDevolucion() {
         if (idPrestamoBuscadoDev == -1) return;
+
+        Optional<Prestamo> prestamoAntesDevolver = prestamoController.buscarPrestamoPorId(idPrestamoBuscadoDev);
+        boolean correspondeMultaPorRetraso = prestamoAntesDevolver.isPresent()
+                && prestamoAntesDevolver.get().getFechaPrestamo() != null
+                && ChronoUnit.DAYS.between(prestamoAntesDevolver.get().getFechaPrestamo(), LocalDate.now())
+                > PrestamoService.MAX_DIAS_PRESTAMO;
 
         boolean exito = prestamoController.registrarDevolucion(idPrestamoBuscadoDev);
 
         if (exito) {
-            // Verificar si el sistema generó alguna multa en la base de datos justo ahora
-            // Buscamos si el estudiante del préstamo tiene multas
-            Optional<Prestamo> pOpt = prestamoController.buscarPrestamoPorId(idPrestamoBuscadoDev);
             String extraMsg = "";
-            if (pOpt.isPresent() && pOpt.get().getEstado() == biblioteca.modelo.EstadoPrestamo.ATRASADO) {
-                extraMsg = "\n⚠️ Se ha registrado la devolución con retraso. Se generó una multa diaria en PostgreSQL.";
+            if (correspondeMultaPorRetraso) {
+                extraMsg = "\nSe registró una multa pendiente por devolución tardía.";
             }
 
             JOptionPane.showMessageDialog(this, "Devolución registrada exitosamente. El stock de los libros ha sido repuesto." + extraMsg);

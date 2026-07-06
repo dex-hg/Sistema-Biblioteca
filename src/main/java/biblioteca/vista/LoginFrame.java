@@ -48,8 +48,8 @@ public class LoginFrame extends JFrame {
         JPanel panelTitulo = new JPanel(new BorderLayout());
         panelTitulo.setOpaque(false);
 
-        JLabel lblLogo = new JLabel("📚", SwingConstants.CENTER);
-        lblLogo.setFont(new Font("Segoe UI", Font.PLAIN, 48));
+        JLabel lblLogo = new JLabel("BIBLIO-SYS", SwingConstants.CENTER);
+        lblLogo.setFont(new Font("Segoe UI", Font.BOLD, 20));
         panelTitulo.add(lblLogo, BorderLayout.NORTH);
 
         JLabel lblTitulo = new JLabel("BIBLIOTECA", SwingConstants.CENTER);

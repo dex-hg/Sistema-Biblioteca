@@ -4,6 +4,7 @@ import biblioteca.modelo.Usuario;
 import biblioteca.servicios.LibroService;
 import biblioteca.servicios.MultaService;
 import biblioteca.servicios.PrestamoService;
+import biblioteca.modelo.EstadoPrestamo;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Color;
@@ -34,6 +35,7 @@ public class MainFrame extends JFrame {
     private JPanel panelDashboard;
     private GestionLibrosPanel panelLibros;
     private PrestamosPanel panelPrestamos;
+    private MultasPanel panelMultas;
     private ReportesPanel panelReportes;
 
     // Servicios para el Dashboard
@@ -45,6 +47,8 @@ public class MainFrame extends JFrame {
     private JLabel lblTotalLibrosVal;
     private JLabel lblPrestamosActivosVal;
     private JLabel lblMultasPendientesVal;
+    private JLabel lblAvisoPrestamosVal;
+    private JLabel lblAvisoMultasVal;
 
     public MainFrame(Usuario usuario) {
         this.usuarioLogueado = usuario;
@@ -83,12 +87,12 @@ public class MainFrame extends JFrame {
         panelContenido.add(panelDashboard, "DASHBOARD");
         panelContenido.add(panelLibros, "LIBROS");
 
-        // Paneles condicionales según el rol (Administrador = 1, Bibliotecario = 2, Estudiante = 3)
+        // Paneles según el rol (Administrador = 1, Bibliotecario = 2, Estudiante = 3)
         int rolId = (usuarioLogueado.getRol() != null) ? usuarioLogueado.getRol().getId() : 3;
-        if (rolId == 1 || rolId == 2) {
-            panelPrestamos = new PrestamosPanel(usuarioLogueado);
-            panelContenido.add(panelPrestamos, "PRESTAMOS");
-        }
+        panelPrestamos = new PrestamosPanel(usuarioLogueado);
+        panelMultas = new MultasPanel(usuarioLogueado);
+        panelContenido.add(panelPrestamos, "PRESTAMOS");
+        panelContenido.add(panelMultas, "MULTAS");
         if (rolId == 1) {
             panelReportes = new ReportesPanel();
             panelContenido.add(panelReportes, "REPORTES");
@@ -111,7 +115,7 @@ public class MainFrame extends JFrame {
         header.setOpaque(false);
         header.setBorder(BorderFactory.createEmptyBorder(30, 20, 30, 20));
 
-        JLabel lblBrandIcon = new JLabel("📚 ", SwingConstants.LEFT);
+        JLabel lblBrandIcon = new JLabel("B", SwingConstants.LEFT);
         lblBrandIcon.setFont(new Font("Segoe UI", Font.PLAIN, 24));
         lblBrandIcon.setForeground(Color.WHITE);
         
@@ -159,25 +163,26 @@ public class MainFrame extends JFrame {
 
         int row = 0;
 
-        JButton btnHome = crearBotonMenu("Dashboard", "🏠");
+        JButton btnHome = crearBotonMenu("Dashboard", "");
         gbc.gridy = row++;
         menu.add(btnHome, gbc);
 
-        JButton btnLib = crearBotonMenu("Catálogo de Libros", "📘");
+        JButton btnLib = crearBotonMenu("Catálogo de Libros", "");
         gbc.gridy = row++;
         menu.add(btnLib, gbc);
 
         int rolId = (usuarioLogueado.getRol() != null) ? usuarioLogueado.getRol().getId() : 3;
-        JButton btnPres = null;
-        if (rolId == 1 || rolId == 2) {
-            btnPres = crearBotonMenu("Préstamos y Dev.", "🔄");
-            gbc.gridy = row++;
-            menu.add(btnPres, gbc);
-        }
+        JButton btnPres = crearBotonMenu(rolId == 3 ? "Mis Préstamos" : "Préstamos y Dev.", "");
+        gbc.gridy = row++;
+        menu.add(btnPres, gbc);
+
+        JButton btnMultas = crearBotonMenu(rolId == 3 ? "Mis Multas" : "Multas", "");
+        gbc.gridy = row++;
+        menu.add(btnMultas, gbc);
 
         JButton btnRep = null;
         if (rolId == 1) {
-            btnRep = crearBotonMenu("Reportes", "📈");
+            btnRep = crearBotonMenu("Reportes", "");
             gbc.gridy = row++;
             menu.add(btnRep, gbc);
         }
@@ -194,7 +199,7 @@ public class MainFrame extends JFrame {
         footer.setOpaque(false);
         footer.setBorder(BorderFactory.createEmptyBorder(20, 15, 30, 15));
 
-        JButton btnCerrar = crearBotonMenu("Cerrar Sesión", "🚪");
+        JButton btnCerrar = crearBotonMenu("Cerrar Sesión", "");
         btnCerrar.setBackground(new Color(220, 53, 69));
         btnCerrar.setForeground(Color.WHITE);
         btnCerrar.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -211,12 +216,14 @@ public class MainFrame extends JFrame {
             panelLibros.actualizarTabla();
             cardLayout.show(panelContenido, "LIBROS");
         });
-        if (btnPres != null) {
-            btnPres.addActionListener(e -> {
-                panelPrestamos.actualizarTablaPrestamos();
-                cardLayout.show(panelContenido, "PRESTAMOS");
-            });
-        }
+        btnPres.addActionListener(e -> {
+            panelPrestamos.actualizarTablaPrestamos();
+            cardLayout.show(panelContenido, "PRESTAMOS");
+        });
+        btnMultas.addActionListener(e -> {
+            panelMultas.recargarMultas();
+            cardLayout.show(panelContenido, "MULTAS");
+        });
         if (btnRep != null) {
             btnRep.addActionListener(e -> {
                 panelReportes.recargarReportes();
@@ -238,7 +245,7 @@ public class MainFrame extends JFrame {
     }
 
     private JButton crearBotonMenu(String texto, String icono) {
-        JButton btn = new JButton(icono + "  " + texto);
+        JButton btn = new JButton(texto);
         btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         btn.setForeground(new Color(248, 249, 250));
         btn.setBackground(new Color(52, 58, 64));
@@ -278,70 +285,61 @@ public class MainFrame extends JFrame {
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1.0;
         gbc.insets = new Insets(0, 10, 0, 10);
+        int rolId = (usuarioLogueado.getRol() != null) ? usuarioLogueado.getRol().getId() : 3;
 
         // Tarjeta 1: Total Libros
-        JPanel cardLibros = crearCardEstadistica("Total Libros en Sistema", "0", "📘", new Color(13, 110, 253));
+        JPanel cardLibros = crearCardEstadistica("Total Libros en Sistema", "0", "LIB", new Color(13, 110, 253));
         lblTotalLibrosVal = (JLabel) cardLibros.getClientProperty("valueLabel");
         gbc.gridx = 0;
         statsPanel.add(cardLibros, gbc);
 
         // Tarjeta 2: Préstamos Activos
-        JPanel cardPrestamos = crearCardEstadistica("Préstamos Activos", "0", "🔄", new Color(25, 135, 84));
+        JPanel cardPrestamos = crearCardEstadistica(
+                rolId == 3 ? "Mis Préstamos Activos" : "Préstamos Activos",
+                "0",
+                "PRE",
+                new Color(25, 135, 84));
         lblPrestamosActivosVal = (JLabel) cardPrestamos.getClientProperty("valueLabel");
         gbc.gridx = 1;
         statsPanel.add(cardPrestamos, gbc);
 
         // Tarjeta 3: Multas Pendientes
-        JPanel cardMultas = crearCardEstadistica("Multas Pendientes", "0", "⚠️", new Color(220, 53, 69));
+        JPanel cardMultas = crearCardEstadistica(
+                rolId == 3 ? "Mis Multas Pendientes" : "Multas Pendientes",
+                "0",
+                "MUL",
+                new Color(220, 53, 69));
         lblMultasPendientesVal = (JLabel) cardMultas.getClientProperty("valueLabel");
         gbc.gridx = 2;
         statsPanel.add(cardMultas, gbc);
 
         dashboard.add(statsPanel, BorderLayout.CENTER);
 
-        // PANEL DE ACCESOS RÁPIDOS
-        JPanel quickAccessPanel = new JPanel(new BorderLayout(10, 10));
-        quickAccessPanel.setOpaque(false);
-        quickAccessPanel.setBorder(BorderFactory.createTitledBorder(
+        JPanel avisosPanel = new JPanel(new GridBagLayout());
+        avisosPanel.setOpaque(false);
+        avisosPanel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(222, 226, 230), 1, true),
-                "Accesos Rápidos del Sistema",
+                "Avisos operativos",
                 0, 0,
                 new Font("Segoe UI", Font.BOLD, 14),
                 new Color(73, 80, 87)
         ));
 
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 15));
-        buttonsPanel.setOpaque(false);
+        GridBagConstraints gbcAvisos = new GridBagConstraints();
+        gbcAvisos.fill = GridBagConstraints.HORIZONTAL;
+        gbcAvisos.insets = new Insets(8, 15, 8, 15);
+        gbcAvisos.gridx = 0;
+        gbcAvisos.weightx = 1.0;
 
-        int rolId = (usuarioLogueado.getRol() != null) ? usuarioLogueado.getRol().getId() : 3;
+        lblAvisoPrestamosVal = crearEtiquetaAviso("Cargando préstamos activos...");
+        gbcAvisos.gridy = 0;
+        avisosPanel.add(lblAvisoPrestamosVal, gbcAvisos);
 
-        if (rolId == 1 || rolId == 2) {
-            JButton btnGoPrestamos = crearBotonAccesoRapido("Registrar Préstamo", "➕   Realizar un préstamo de libros a estudiantes.");
-            btnGoPrestamos.addActionListener(e -> {
-                panelPrestamos.actualizarTablaPrestamos();
-                cardLayout.show(panelContenido, "PRESTAMOS");
-            });
-            buttonsPanel.add(btnGoPrestamos);
-        }
+        lblAvisoMultasVal = crearEtiquetaAviso("Cargando multas pendientes...");
+        gbcAvisos.gridy = 1;
+        avisosPanel.add(lblAvisoMultasVal, gbcAvisos);
 
-        JButton btnGoCatalogo = crearBotonAccesoRapido("Ver Catálogo", "🔍   Buscar, filtrar y ordenar libros.");
-        btnGoCatalogo.addActionListener(e -> {
-            panelLibros.actualizarTabla();
-            cardLayout.show(panelContenido, "LIBROS");
-        });
-        buttonsPanel.add(btnGoCatalogo);
-
-        if (rolId == 1) {
-            JButton btnGoReportes = crearBotonAccesoRapido("Ver Reportes", "📊   Análisis de préstamos y estadísticas.");
-            btnGoReportes.addActionListener(e -> {
-                panelReportes.recargarReportes();
-                cardLayout.show(panelContenido, "REPORTES");
-            });
-            buttonsPanel.add(btnGoReportes);
-        }
-
-        quickAccessPanel.add(buttonsPanel, BorderLayout.CENTER);
-        dashboard.add(quickAccessPanel, BorderLayout.SOUTH);
+        dashboard.add(avisosPanel, BorderLayout.SOUTH);
 
         return dashboard;
     }
@@ -355,7 +353,7 @@ public class MainFrame extends JFrame {
         ));
 
         JLabel lblIcon = new JLabel(icono);
-        lblIcon.setFont(new Font("Segoe UI", Font.PLAIN, 36));
+        lblIcon.setFont(new Font("Segoe UI", Font.BOLD, 18));
         lblIcon.setForeground(colorBorde);
         card.add(lblIcon, BorderLayout.EAST);
 
@@ -375,21 +373,17 @@ public class MainFrame extends JFrame {
         return card;
     }
 
-    private JButton crearBotonAccesoRapido(String titulo, String descripcion) {
-        JButton btn = new JButton("<html><b>" + titulo + "</b><br><font size='3' color='#6c757d'>" + descripcion + "</font></html>");
-        btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        btn.setPreferredSize(new Dimension(300, 70));
-        btn.setBackground(Color.WHITE);
-        btn.setForeground(new Color(33, 37, 41));
-        btn.setHorizontalAlignment(SwingConstants.LEFT);
-        btn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        btn.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(222, 226, 230), 1, true),
-                BorderFactory.createEmptyBorder(10, 15, 10, 15)
+    private JLabel crearEtiquetaAviso(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        label.setForeground(new Color(73, 80, 87));
+        label.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 4, 0, 0, new Color(13, 110, 253)),
+                BorderFactory.createEmptyBorder(10, 12, 10, 12)
         ));
-        btn.setFocusPainted(false);
-        btn.putClientProperty("JButton.buttonType", "roundRect");
-        return btn;
+        label.setOpaque(true);
+        label.setBackground(Color.WHITE);
+        return label;
     }
 
     private void cargarEstadisticasDashboard() {
@@ -397,20 +391,48 @@ public class MainFrame extends JFrame {
             try {
                 // Obtener datos
                 int totalLibros = libroService.buscarPorTitulo("").size();
-                int prestamosActivos = prestamoService.listarPrestamosActivos().size();
+                int rolId = (usuarioLogueado.getRol() != null) ? usuarioLogueado.getRol().getId() : 3;
+                var prestamosBase = rolId == 3
+                        ? prestamoService.listarPrestamosPorEstudiante(usuarioLogueado.getId())
+                        : prestamoService.listarPrestamosActivos();
+                int prestamosActivos = 0;
+                int prestamosAtrasados = 0;
+                for (int i = 0; i < prestamosBase.size(); i++) {
+                    var prestamo = prestamosBase.obtener(i);
+                    if (prestamo.getEstado() == EstadoPrestamo.ACTIVO || prestamo.getEstado() == EstadoPrestamo.ATRASADO) {
+                        prestamosActivos++;
+                    }
+                    if (prestamo.getEstado() == EstadoPrestamo.ATRASADO) {
+                        prestamosAtrasados++;
+                    }
+                }
                 
-                // Para las multas, calculamos sumando las pendientes de todos los estudiantes
                 int multasPendientes = 0;
-                // Obtenemos todos los estudiantes de la base de datos
-                var estudiantes = new biblioteca.servicios.EstudianteService().listarTodos();
-                for (int i = 0; i < estudiantes.size(); i++) {
-                    var est = estudiantes.obtener(i);
-                    multasPendientes += multaService.obtenerMultasPendientes(est.getId()).size();
+                double montoMultasAcumuladas = 0.0;
+                if (rolId == 3) {
+                    var multasEstudiante = multaService.obtenerMultasPorEstudiante(usuarioLogueado.getId());
+                    for (int i = 0; i < multasEstudiante.size(); i++) {
+                        var multa = multasEstudiante.obtener(i);
+                        montoMultasAcumuladas += multa.getMonto();
+                        if ("PENDIENTE".equalsIgnoreCase(multa.getEstado())) {
+                            multasPendientes++;
+                        }
+                    }
+                } else {
+                    var estudiantes = new biblioteca.servicios.EstudianteService().listarTodos();
+                    for (int i = 0; i < estudiantes.size(); i++) {
+                        var est = estudiantes.obtener(i);
+                        multasPendientes += multaService.obtenerMultasPendientes(est.getId()).size();
+                    }
                 }
 
                 final int finalLibros = totalLibros;
                 final int finalActivos = prestamosActivos;
                 final int finalMultas = multasPendientes;
+                final int finalAtrasados = prestamosAtrasados;
+                final int finalRolId = rolId;
+                final int finalTotalPrestamosHistoricos = prestamosBase.size();
+                final double finalMontoMultasAcumuladas = montoMultasAcumuladas;
 
                 // Actualizar interfaz gráfica en el hilo EDT
                 java.awt.EventQueue.invokeLater(() -> {
@@ -422,6 +444,24 @@ public class MainFrame extends JFrame {
                     }
                     if (lblMultasPendientesVal != null) {
                         lblMultasPendientesVal.setText(String.valueOf(finalMultas));
+                    }
+                    if (lblAvisoPrestamosVal != null) {
+                        if (finalRolId == 3) {
+                            lblAvisoPrestamosVal.setText("Total de préstamos realizados: " + finalTotalPrestamosHistoricos
+                                    + " | Activos o atrasados: " + finalActivos);
+                        } else {
+                            lblAvisoPrestamosVal.setText("Préstamos no devueltos: " + finalActivos
+                                    + " | Atrasados: " + finalAtrasados);
+                        }
+                    }
+                    if (lblAvisoMultasVal != null) {
+                        if (finalRolId == 3) {
+                            lblAvisoMultasVal.setText(String.format("Monto total de multas acumuladas: S/. %.2f | Pendientes: %d",
+                                    finalMontoMultasAcumuladas,
+                                    finalMultas));
+                        } else {
+                            lblAvisoMultasVal.setText("Multas pendientes de pago: " + finalMultas);
+                        }
                     }
                 });
             } catch (Exception e) {

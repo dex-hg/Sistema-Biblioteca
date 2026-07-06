@@ -50,7 +50,7 @@ public class ReportesPanel extends JPanel {
         lblTitulo.setForeground(new Color(33, 37, 41));
         panelHeader.add(lblTitulo, BorderLayout.WEST);
 
-        JButton btnRecargar = new JButton("🔄  Actualizar Datos");
+        JButton btnRecargar = new JButton("Actualizar Datos");
         btnRecargar.setFont(new Font("Segoe UI", Font.BOLD, 12));
         btnRecargar.setBackground(new Color(33, 37, 41));
         btnRecargar.setForeground(Color.WHITE);
@@ -64,9 +64,9 @@ public class ReportesPanel extends JPanel {
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.setFont(new Font("Segoe UI", Font.BOLD, 13));
 
-        tabbedPane.addTab("🔥 Libros Más Prestados", crearTabMasPrestados());
-        tabbedPane.addTab("⏳ Préstamos Activos", crearTabActivos());
-        tabbedPane.addTab("📚 Historial General", crearTabHistorial());
+        tabbedPane.addTab("Libros Más Prestados", crearTabMasPrestados());
+        tabbedPane.addTab("Préstamos Activos", crearTabActivos());
+        tabbedPane.addTab("Historial General", crearTabHistorial());
 
         add(tabbedPane, BorderLayout.CENTER);
 
