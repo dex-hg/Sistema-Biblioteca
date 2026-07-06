@@ -12,7 +12,7 @@ import java.util.Comparator;
  * Clase de prueba manual para verificar el comportamiento de las estructuras de
  * datos y algoritmos del curso implementados de forma personalizada.
  */
-public class Test_Estructuras {
+public class TestEstructuras {
 
     public static void main(String[] args) {
         System.out.println("==================================================");

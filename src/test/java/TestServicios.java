@@ -11,7 +11,7 @@ import java.util.Optional;
  * Clase de prueba de integración para validar el funcionamiento de los servicios del sistema,
  * interactuando con la base de datos PostgreSQL mediante los DAOs y aplicando las reglas de negocio.
  */
-public class Test_Servicios {
+public class TestServicios {
 
     public static void main(String[] args) {
         System.out.println("==================================================");

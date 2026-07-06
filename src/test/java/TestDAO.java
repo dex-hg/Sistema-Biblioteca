@@ -24,7 +24,7 @@ import biblioteca.estructuras.ListaEnlazada;
 import java.time.LocalDate;
 import java.util.Optional;
 
-public class Test_DAO {
+public class TestDAO {
 
     public static void main(String[] args) {
         System.out.println("=== INICIANDO PRUEBAS DE DAO Y PERSISTENCIA ===");

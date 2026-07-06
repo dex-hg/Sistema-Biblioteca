@@ -1,7 +1,7 @@
 
 import java.sql.*;
 
-public class Test_conexion {
+public class Testconexion {
     
     public static void main(String[] args) throws SQLException {
         String url = "jdbc:postgresql://localhost:5432/biblioteca";
