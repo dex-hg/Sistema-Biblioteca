@@ -104,6 +104,41 @@ public class MultaService {
     }
 
     /**
+     * Obtiene todas las multas de un estudiante, sin filtrar por estado.
+     *
+     * @param idEstudiante Identificador del estudiante.
+     * @return Lista de multas pendientes y pagadas del estudiante.
+     */
+    public ListaEnlazada<Multa> obtenerMultasPorEstudiante(int idEstudiante) {
+        ListaEnlazada<Multa> multasEstudiante = new ListaEnlazada<>();
+        if (idEstudiante <= 0) {
+            return multasEstudiante;
+        }
+
+        ListaEnlazada<Prestamo> prestamosEstudiante
+                = prestamoDAO.listarPrestamoPorEstudiante(idEstudiante);
+        ListaEnlazada<Multa> todasMultas = multaDAO.listarTodos();
+
+        for (int i = 0; i < todasMultas.size(); i++) {
+            Multa multa = todasMultas.obtener(i);
+            if (multa.getPrestamo() == null) {
+                continue;
+            }
+
+            for (int j = 0; j < prestamosEstudiante.size(); j++) {
+                Prestamo prestamo = prestamosEstudiante.obtener(j);
+                if (prestamo.getId() == multa.getPrestamo().getId()) {
+                    multa.setPrestamo(prestamo);
+                    multasEstudiante.agregar(multa);
+                    break;
+                }
+            }
+        }
+
+        return multasEstudiante;
+    }
+
+    /**
      * Registra el pago de una multa cambiando su estado a 'PAGADA'.
      *
      * @param idMulta Identificador único de la multa.

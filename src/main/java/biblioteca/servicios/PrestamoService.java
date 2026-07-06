@@ -277,6 +277,19 @@ public class PrestamoService {
     }
 
     /**
+     * Lista los préstamos asociados a un estudiante específico.
+     *
+     * @param idEstudiante Identificador del estudiante.
+     * @return Lista de préstamos del estudiante.
+     */
+    public ListaEnlazada<Prestamo> listarPrestamosPorEstudiante(int idEstudiante) {
+        if (idEstudiante <= 0) {
+            return new ListaEnlazada<>();
+        }
+        return prestamoDAO.listarPrestamoPorEstudiante(idEstudiante);
+    }
+
+    /**
      * Lista todos los préstamos realizados en el sistema.
      *
      * @return Lista general de historial.

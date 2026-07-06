@@ -63,16 +63,15 @@ public class GestionLibrosPanel extends JPanel {
         setOpaque(false);
 
         // Título de la Sección
-        JLabel lblTituloSeccion = new JLabel("Catálogo y Gestión de Libros");
+        boolean esAdministrador = (usuarioLogueado.getRol() != null && usuarioLogueado.getRol().getId() == 1);
+
+        JLabel lblTituloSeccion = new JLabel(esAdministrador ? "Catálogo y Gestión de Libros" : "Catálogo de Libros");
         lblTituloSeccion.setFont(new Font("Segoe UI", Font.BOLD, 20));
         lblTituloSeccion.setForeground(new Color(33, 37, 41));
         add(lblTituloSeccion, BorderLayout.NORTH);
 
-        // Determinar si es modo Lectura (Estudiante = Rol ID 3)
-        boolean esEstudiante = (usuarioLogueado.getRol() != null && usuarioLogueado.getRol().getId() == 3);
-
-        // Panel de Operaciones (CRUD) - Solo se añade si no es estudiante
-        if (!esEstudiante) {
+        // Panel de Operaciones (CRUD) - Solo administrador.
+        if (esAdministrador) {
             JPanel panelFormulario = crearPanelFormulario();
             add(panelFormulario, BorderLayout.WEST);
         }

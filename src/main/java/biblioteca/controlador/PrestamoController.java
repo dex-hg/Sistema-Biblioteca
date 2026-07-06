@@ -5,6 +5,8 @@ import biblioteca.modelo.Estudiante;
 import biblioteca.modelo.Libro;
 import biblioteca.modelo.Prestamo;
 import biblioteca.modelo.Usuario;
+import biblioteca.dao.impl.DetallePrestamoDAOImpl;
+import biblioteca.dao.interfaces.DetallePrestamoDAO;
 import biblioteca.servicios.EstudianteService;
 import biblioteca.servicios.LibroService;
 import biblioteca.servicios.PrestamoService;
@@ -16,11 +18,13 @@ public class PrestamoController {
     private final PrestamoService prestamoService;
     private final EstudianteService estudianteService;
     private final LibroService libroService;
+    private final DetallePrestamoDAO detallePrestamoDAO;
 
     public PrestamoController() {
         this.prestamoService = new PrestamoService();
         this.estudianteService = new EstudianteService();
         this.libroService = new LibroService();
+        this.detallePrestamoDAO = new DetallePrestamoDAOImpl();
     }
 
     /**
@@ -40,7 +44,11 @@ public class PrestamoController {
     /**
      * Registra un nuevo préstamo para un estudiante con una lista de detalles.
      */
-    public boolean registrarPrestamo(Estudiante estudiante, Usuario bibliotecario, ListaEnlazada<DetallePrestamo> detalles) {
+    public boolean registrarPrestamo(
+            Estudiante estudiante,
+            Usuario bibliotecario,
+            ListaEnlazada<DetallePrestamo> detalles
+    ) {
         Prestamo prestamo = new Prestamo();
         prestamo.setEstudiante(estudiante);
         if (bibliotecario != null) {
@@ -70,9 +78,33 @@ public class PrestamoController {
     }
 
     /**
+     * Obtiene préstamos que todavía no han sido devueltos.
+     */
+    public ListaEnlazada<Prestamo> obtenerPrestamosActivos() {
+        return prestamoService.listarPrestamosActivos();
+    }
+
+    /**
+     * Obtiene los préstamos de un estudiante.
+     */
+    public ListaEnlazada<Prestamo> obtenerPrestamosPorEstudiante(int idEstudiante) {
+        return prestamoService.listarPrestamosPorEstudiante(idEstudiante);
+    }
+
+    /**
      * Obtiene un préstamo por su ID.
      */
     public Optional<Prestamo> buscarPrestamoPorId(int idPrestamo) {
         return prestamoService.buscarPorId(idPrestamo);
+    }
+
+    /**
+     * Obtiene los libros asociados a un préstamo.
+     */
+    public ListaEnlazada<DetallePrestamo> obtenerDetallesPrestamo(int idPrestamo) {
+        if (idPrestamo <= 0) {
+            return new ListaEnlazada<>();
+        }
+        return detallePrestamoDAO.buscarPorPrestamo(idPrestamo);
     }
 }

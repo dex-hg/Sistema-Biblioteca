@@ -198,4 +198,25 @@ public class LibroService {
         }
         return libroDAO.buscarPorTitulo(query);
     }
+
+    /**
+     * Descuenta una unidad de stock cuando un ejemplar se reporta como perdido
+     * o inutilizable.
+     *
+     * @param idLibro Identificador del libro afectado.
+     * @return true si el stock fue actualizado.
+     */
+    public boolean descontarUnidadStock(int idLibro) {
+        Optional<Libro> libroOpt = buscarLibroPorId(idLibro);
+        if (libroOpt.isEmpty()) {
+            return false;
+        }
+
+        Libro libro = libroOpt.get();
+        if (libro.getStock() <= 0) {
+            return false;
+        }
+
+        return libroDAO.actualizarStock(idLibro, libro.getStock() - 1);
+    }
 }
