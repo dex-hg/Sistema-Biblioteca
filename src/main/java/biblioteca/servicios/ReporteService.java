@@ -1,6 +1,7 @@
 package biblioteca.servicios;
 
 import biblioteca.conexion.ConexionBD;
+import biblioteca.estructuras.AlgoritmosOrdenamiento;
 import biblioteca.modelo.Prestamo;
 import biblioteca.estructuras.ListaEnlazada;
 
@@ -8,8 +9,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Comparator;
 
 public class ReporteService {
+
+    private static final int LIMITE_RANKING_LIBROS = 5;
 
     private final PrestamoService prestamoService;
 
@@ -23,14 +27,12 @@ public class ReporteService {
      * @return Una lista de arreglos de Object conteniendo: [Título, Autor, Total Prestados]
      */
     public ListaEnlazada<Object[]> obtenerLibrosMasPrestados() {
-        ListaEnlazada<Object[]> reporte = new ListaEnlazada<>();
+        ListaEnlazada<Object[]> reporteCompleto = new ListaEnlazada<>();
         String sql = """
                      SELECT l.titulo, l.autor, SUM(dp.cantidad) AS total_prestado
                      FROM detalle_prestamo dp
                      JOIN libros l ON dp.id_libro = l.id_libro
                      GROUP BY l.id_libro, l.titulo, l.autor
-                     ORDER BY total_prestado DESC
-                     LIMIT 5
                      """;
 
         try (Connection cn = ConexionBD.getConexion();
@@ -41,12 +43,26 @@ public class ReporteService {
                 String titulo = rs.getString("titulo");
                 String autor = rs.getString("autor");
                 int totalPrestado = rs.getInt("total_prestado");
-                reporte.agregar(new Object[]{titulo, autor, totalPrestado});
+                reporteCompleto.agregar(new Object[]{titulo, autor, totalPrestado});
             }
         } catch (SQLException e) {
             System.out.println("Error al obtener libros más prestados: " + e.getMessage());
         }
-        return reporte;
+
+        Comparator<Object[]> porTotalDesc = (r1, r2)
+                -> Integer.compare((Integer) r2[2], (Integer) r1[2]);
+        ListaEnlazada<Object[]> rankingOrdenado
+                = AlgoritmosOrdenamiento.ordenarQuickSort(
+                        reporteCompleto,
+                        new Object[0][],
+                        porTotalDesc);
+
+        ListaEnlazada<Object[]> topRanking = new ListaEnlazada<>();
+        int limite = Math.min(LIMITE_RANKING_LIBROS, rankingOrdenado.size());
+        for (int i = 0; i < limite; i++) {
+            topRanking.agregar(rankingOrdenado.obtener(i));
+        }
+        return topRanking;
     }
 
     /**

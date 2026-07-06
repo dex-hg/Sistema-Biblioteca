@@ -29,6 +29,30 @@ public class AlgoritmosOrdenamiento {
     }
 
     /**
+     * Ordena una ListaEnlazada usando QuickSort y retorna una nueva lista.
+     *
+     * @param <T> Tipo comparable.
+     * @param lista Lista de origen.
+     * @param plantilla Arreglo vacío usado para conservar el tipo.
+     * @return Nueva ListaEnlazada ordenada.
+     */
+    public static <T extends Comparable<T>> ListaEnlazada<T> ordenarQuickSort(
+            ListaEnlazada<T> lista,
+            T[] plantilla) {
+        ListaEnlazada<T> ordenada = new ListaEnlazada<>();
+        if (lista == null || lista.isEmpty() || plantilla == null) {
+            return ordenada;
+        }
+
+        T[] arreglo = lista.toArray(plantilla);
+        ordenarQuickSort(arreglo);
+        for (T elemento : arreglo) {
+            ordenada.agregar(elemento);
+        }
+        return ordenada;
+    }
+
+    /**
      * Ordena un arreglo de elementos utilizando un Comparador personalizado.
      * Complejidad: O(N log N) promedio, O(N^2) en el peor caso.
      *
@@ -43,6 +67,35 @@ public class AlgoritmosOrdenamiento {
             return;
         }
         quickSort(arreglo, 0, arreglo.length - 1, comparador);
+    }
+
+    /**
+     * Ordena una ListaEnlazada con QuickSort y un comparador personalizado.
+     *
+     * @param <T> Tipo de dato.
+     * @param lista Lista de origen.
+     * @param plantilla Arreglo vacío usado para conservar el tipo.
+     * @param comparador Criterio de ordenamiento.
+     * @return Nueva ListaEnlazada ordenada.
+     */
+    public static <T> ListaEnlazada<T> ordenarQuickSort(
+            ListaEnlazada<T> lista,
+            T[] plantilla,
+            Comparator<T> comparador) {
+        ListaEnlazada<T> ordenada = new ListaEnlazada<>();
+        if (lista == null
+                || lista.isEmpty()
+                || plantilla == null
+                || comparador == null) {
+            return ordenada;
+        }
+
+        T[] arreglo = lista.toArray(plantilla);
+        ordenarQuickSort(arreglo, comparador);
+        for (T elemento : arreglo) {
+            ordenada.agregar(elemento);
+        }
+        return ordenada;
     }
 
     /**

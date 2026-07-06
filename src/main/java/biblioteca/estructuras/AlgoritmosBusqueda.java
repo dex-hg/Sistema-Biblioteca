@@ -36,6 +36,25 @@ public class AlgoritmosBusqueda {
     }
 
     /**
+     * Realiza búsqueda binaria sobre una ListaEnlazada previamente ordenada.
+     *
+     * @param <T> Tipo comparable.
+     * @param lista Lista ordenada donde buscar.
+     * @param objetivo Elemento buscado.
+     * @param plantilla Arreglo vacío usado para conservar el tipo.
+     * @return Índice del elemento si existe, o -1.
+     */
+    public static <T extends Comparable<T>> int busquedaBinaria(
+            ListaEnlazada<T> lista,
+            T objetivo,
+            T[] plantilla) {
+        if (lista == null || lista.isEmpty() || plantilla == null) {
+            return -1;
+        }
+        return busquedaBinaria(lista.toArray(plantilla), objetivo);
+    }
+
+    /**
      * Realiza una búsqueda binaria recursiva en un arreglo ordenado usando un
      * Comparador. Complejidad: O(log N)
      *
@@ -147,6 +166,28 @@ public class AlgoritmosBusqueda {
     }
 
     /**
+     * Realiza búsqueda binaria sobre una ListaEnlazada previamente ordenada
+     * usando un comparador.
+     *
+     * @param <T> Tipo de dato.
+     * @param lista Lista ordenada donde buscar.
+     * @param objetivo Elemento buscado.
+     * @param plantilla Arreglo vacío usado para conservar el tipo.
+     * @param comparador Criterio de comparación.
+     * @return Índice del elemento si existe, o -1.
+     */
+    public static <T> int busquedaBinaria(
+            ListaEnlazada<T> lista,
+            T objetivo,
+            T[] plantilla,
+            Comparator<T> comparador) {
+        if (lista == null || lista.isEmpty() || plantilla == null) {
+            return -1;
+        }
+        return busquedaBinaria(lista.toArray(plantilla), objetivo, comparador);
+    }
+
+    /**
      * Realiza una búsqueda lineal en un arreglo. Útil cuando los datos no están
      * ordenados o se busca por un criterio secundario. Complejidad: O(N)
      *
@@ -161,6 +202,28 @@ public class AlgoritmosBusqueda {
         }
         for (int i = 0; i < arreglo.length; i++) {
             if (objetivo.equals(arreglo[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Realiza búsqueda lineal sobre ListaEnlazada.
+     *
+     * @param <T> Tipo de dato.
+     * @param lista Lista donde buscar.
+     * @param objetivo Elemento buscado.
+     * @return Índice del elemento si existe, o -1.
+     */
+    public static <T> int busquedaLineal(
+            ListaEnlazada<T> lista,
+            T objetivo) {
+        if (lista == null || objetivo == null) {
+            return -1;
+        }
+        for (int i = 0; i < lista.size(); i++) {
+            if (objetivo.equals(lista.obtener(i))) {
                 return i;
             }
         }
@@ -187,6 +250,30 @@ public class AlgoritmosBusqueda {
         }
         for (int i = 0; i < arreglo.length; i++) {
             if (comparador.compare(arreglo[i], objetivo) == 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Realiza búsqueda lineal sobre ListaEnlazada usando un comparador.
+     *
+     * @param <T> Tipo de dato.
+     * @param lista Lista donde buscar.
+     * @param objetivo Elemento buscado.
+     * @param comparador Comparador que retorna 0 cuando hay coincidencia.
+     * @return Índice del elemento si existe, o -1.
+     */
+    public static <T> int busquedaLineal(
+            ListaEnlazada<T> lista,
+            T objetivo,
+            Comparator<T> comparador) {
+        if (lista == null || objetivo == null || comparador == null) {
+            return -1;
+        }
+        for (int i = 0; i < lista.size(); i++) {
+            if (comparador.compare(lista.obtener(i), objetivo) == 0) {
                 return i;
             }
         }

@@ -4,8 +4,11 @@ import biblioteca.estructuras.Cola;
 import biblioteca.estructuras.ListaEnlazada;
 import biblioteca.estructuras.AlgoritmosOrdenamiento;
 import biblioteca.estructuras.AlgoritmosBusqueda;
+import biblioteca.modelo.DetallePrestamo;
 import biblioteca.modelo.Libro;
+import biblioteca.modelo.Prestamo;
 
+import java.time.LocalDate;
 import java.util.Comparator;
 
 /**
@@ -33,6 +36,9 @@ public class TestEstructuras {
 
         // 5. Probar Algoritmos de Búsqueda (Búsqueda Binaria y Lineal)
         probarBusqueda();
+
+        // 6. Probar aplicaciones de dominio con Pila y Cola
+        probarAplicacionesDominio();
 
         System.out.println("==================================================");
         System.out.println("  TODAS LAS PRUEBAS FINALIZADAS CON ÉXITO         ");
@@ -100,6 +106,15 @@ public class TestEstructuras {
         System.out.println("Removiendo índice 1 (valor 20): " + numeros.remover(1));
         System.out.println("Tamaño actual: " + numeros.size()); // 3
         System.out.println("Elemento en índice 1 ahora: " + numeros.obtener(1)); // 30
+        System.out.println("¿Contiene 40?: " + numeros.contiene(40)); // true
+        System.out.println("Removiendo último: " + numeros.removerUltimo()); // 40
+
+        ListaEnlazada<Integer> mayoresAQuince = numeros.filtrar(n -> n > 15);
+        System.out.print("Filtrados mayores a 15: ");
+        for (Integer numero : mayoresAQuince) {
+            System.out.print(numero + " ");
+        }
+        System.out.println();
 
         // Probar conversión a arreglo
         Integer[] arrayTemplate = new Integer[0];
@@ -148,6 +163,19 @@ public class TestEstructuras {
         AlgoritmosOrdenamiento.ordenarQuickSort(libros, comparadorTitulo);
         System.out.println("Catálogo de libros ordenado por Título:");
         imprimirLibros(libros);
+
+        ListaEnlazada<Libro> catalogo = new ListaEnlazada<>();
+        catalogo.agregar(libro2);
+        catalogo.agregar(libro4);
+        catalogo.agregar(libro1);
+        ListaEnlazada<Libro> catalogoOrdenado = AlgoritmosOrdenamiento.ordenarQuickSort(
+                catalogo,
+                new Libro[0],
+                comparadorTitulo);
+        System.out.println("ListaEnlazada de libros ordenada con QuickSort:");
+        for (Libro libro : catalogoOrdenado) {
+            System.out.println("  - " + libro.getTitulo());
+        }
         System.out.println();
     }
 
@@ -187,6 +215,51 @@ public class TestEstructuras {
 
         int indiceLibro = AlgoritmosBusqueda.busquedaLineal(libros, libroBuscado, comparadorEquivalencia);
         System.out.println("Búsqueda Lineal del libro '" + libroBuscado.getTitulo() + "': índice = " + indiceLibro); // 1
+
+        ListaEnlazada<Integer> numerosEnLista = new ListaEnlazada<>();
+        numerosEnLista.agregar(2);
+        numerosEnLista.agregar(5);
+        numerosEnLista.agregar(12);
+        numerosEnLista.agregar(21);
+        int indiceLista = AlgoritmosBusqueda.busquedaBinaria(numerosEnLista, 12, new Integer[0]);
+        System.out.println("Búsqueda Binaria sobre ListaEnlazada de 12: índice = " + indiceLista);
+        System.out.println();
+    }
+
+    private static void probarAplicacionesDominio() {
+        System.out.println("--- 6. APLICACIONES DE DOMINIO CON PILA Y COLA ---");
+
+        ListaEnlazada<DetallePrestamo> carrito = new ListaEnlazada<>();
+        Pila<DetallePrestamo> historialCarrito = new Pila<>();
+        DetallePrestamo detalleAlgoritmos = detalle(libro("Algoritmos"));
+        DetallePrestamo detalleJava = detalle(libro("Programación Java"));
+
+        carrito.agregar(detalleAlgoritmos);
+        historialCarrito.push(detalleAlgoritmos);
+        carrito.agregar(detalleJava);
+        historialCarrito.push(detalleJava);
+        System.out.println("Último libro deshecho del carrito: " + historialCarrito.pop().getLibro().getTitulo());
+        carrito.removerUltimo();
+        System.out.println("Libros restantes en carrito: " + carrito.size());
+
+        ListaEnlazada<Prestamo> prestamos = new ListaEnlazada<>();
+        prestamos.agregar(prestamo(3, LocalDate.of(2026, 7, 5)));
+        prestamos.agregar(prestamo(1, LocalDate.of(2026, 7, 1)));
+        prestamos.agregar(prestamo(2, LocalDate.of(2026, 7, 3)));
+        ListaEnlazada<Prestamo> ordenados = AlgoritmosOrdenamiento.ordenarQuickSort(
+                prestamos,
+                new Prestamo[0],
+                Comparator.comparing(Prestamo::getFechaPrestamo));
+
+        Cola<Prestamo> colaDevoluciones = new Cola<>();
+        for (Prestamo prestamo : ordenados) {
+            colaDevoluciones.enqueue(prestamo);
+        }
+        System.out.println("Orden FIFO de devolución por antigüedad:");
+        while (!colaDevoluciones.isEmpty()) {
+            Prestamo prestamo = colaDevoluciones.dequeue();
+            System.out.println("  Préstamo #" + prestamo.getId() + " - " + prestamo.getFechaPrestamo());
+        }
         System.out.println();
     }
 
@@ -201,5 +274,25 @@ public class TestEstructuras {
         for (int i = 0; i < libros.length; i++) {
             System.out.println("  [" + i + "] " + libros[i].getTitulo());
         }
+    }
+
+    private static Libro libro(String titulo) {
+        Libro libro = new Libro();
+        libro.setTitulo(titulo);
+        return libro;
+    }
+
+    private static DetallePrestamo detalle(Libro libro) {
+        DetallePrestamo detalle = new DetallePrestamo();
+        detalle.setLibro(libro);
+        detalle.setCantidad(1);
+        return detalle;
+    }
+
+    private static Prestamo prestamo(int id, LocalDate fechaPrestamo) {
+        Prestamo prestamo = new Prestamo();
+        prestamo.setId(id);
+        prestamo.setFechaPrestamo(fechaPrestamo);
+        return prestamo;
     }
 }

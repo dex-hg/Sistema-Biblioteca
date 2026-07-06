@@ -134,20 +134,10 @@ public class LibroService {
             return listaLibros;
         }
 
-        // Convertir la lista a un arreglo de Java para poder ordenar
-        Libro[] arrayLibros = listaLibros.toArray(new Libro[0]);
-
-        // Aplicar QuickSort recursivo a medida
-        AlgoritmosOrdenamiento.ordenarQuickSort(
-                arrayLibros,
+        return AlgoritmosOrdenamiento.ordenarQuickSort(
+                listaLibros,
+                new Libro[0],
                 COMPARADOR_TITULO);
-
-        // Retornar como una ListaEnlazada
-        ListaEnlazada<Libro> listaOrdenada = new ListaEnlazada<>();
-        for (Libro l : arrayLibros) {
-            listaOrdenada.agregar(l);
-        }
-        return listaOrdenada;
     }
 
     /**
@@ -168,18 +158,18 @@ public class LibroService {
             return Optional.empty();
         }
 
-        Libro[] arrayLibros = catalogoOrdenado.toArray(new Libro[0]);
         Libro libroObjetivo = new Libro();
         libroObjetivo.setTitulo(titulo);
 
         // Ejecutar Búsqueda Binaria recursiva a medida
         int indice = AlgoritmosBusqueda.busquedaBinaria(
-                arrayLibros,
+                catalogoOrdenado,
                 libroObjetivo,
+                new Libro[0],
                 COMPARADOR_TITULO);
 
         if (indice != -1) {
-            return Optional.of(arrayLibros[indice]);
+            return Optional.of(catalogoOrdenado.obtener(indice));
         }
 
         return Optional.empty();

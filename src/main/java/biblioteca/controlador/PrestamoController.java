@@ -10,6 +10,7 @@ import biblioteca.dao.interfaces.DetallePrestamoDAO;
 import biblioteca.servicios.EstudianteService;
 import biblioteca.servicios.LibroService;
 import biblioteca.servicios.PrestamoService;
+import biblioteca.estructuras.Cola;
 import biblioteca.estructuras.ListaEnlazada;
 import java.util.Optional;
 
@@ -82,6 +83,20 @@ public class PrestamoController {
      */
     public ListaEnlazada<Prestamo> obtenerPrestamosActivos() {
         return prestamoService.listarPrestamosActivos();
+    }
+
+    /**
+     * Obtiene préstamos activos priorizando los más antiguos.
+     */
+    public ListaEnlazada<Prestamo> obtenerPrestamosActivosOrdenadosPorAntiguedad() {
+        return prestamoService.listarPrestamosActivosOrdenadosPorAntiguedad();
+    }
+
+    /**
+     * Construye la cola FIFO de devoluciones pendientes.
+     */
+    public Cola<Prestamo> obtenerColaDevolucionesPendientes() {
+        return prestamoService.crearColaDevolucionesPendientes();
     }
 
     /**

@@ -1,7 +1,11 @@
 package biblioteca.estructuras;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * Estructura de datos de Lista Enlazada Simple genérica y dinámica. Permite
@@ -10,7 +14,7 @@ import java.util.List;
  *
  * @param <T> Tipo de elementos almacenados en la Lista.
  */
-public class ListaEnlazada<T> {
+public class ListaEnlazada<T> implements Iterable<T> {
 
     private Nodo<T> cabeza;
     private int tamanio;
@@ -92,6 +96,58 @@ public class ListaEnlazada<T> {
         }
         tamanio--;
         return valorEliminado;
+    }
+
+    /**
+     * Remueve y retorna el último elemento de la lista.
+     *
+     * @return Elemento removido al final de la lista.
+     * @throws NoSuchElementException Si la lista está vacía.
+     */
+    public T removerUltimo() {
+        if (isEmpty()) {
+            throw new NoSuchElementException("La lista está vacía.");
+        }
+        return remover(tamanio - 1);
+    }
+
+    /**
+     * Verifica si la lista contiene un elemento usando igualdad estándar.
+     *
+     * @param elemento Elemento buscado.
+     * @return true si el elemento existe en la lista.
+     */
+    public boolean contiene(T elemento) {
+        Nodo<T> aux = cabeza;
+        while (aux != null) {
+            if (Objects.equals(aux.getValor(), elemento)) {
+                return true;
+            }
+            aux = aux.getSiguiente();
+        }
+        return false;
+    }
+
+    /**
+     * Crea una nueva ListaEnlazada con los elementos que cumplen el predicado.
+     *
+     * @param predicado Regla de filtrado.
+     * @return Lista filtrada sin modificar la lista original.
+     */
+    public ListaEnlazada<T> filtrar(Predicate<T> predicado) {
+        ListaEnlazada<T> filtrada = new ListaEnlazada<>();
+        if (predicado == null) {
+            return filtrada;
+        }
+        Nodo<T> aux = cabeza;
+        while (aux != null) {
+            T valor = aux.getValor();
+            if (predicado.test(valor)) {
+                filtrada.agregar(valor);
+            }
+            aux = aux.getSiguiente();
+        }
+        return filtrada;
     }
 
     /**
@@ -178,5 +234,27 @@ public class ListaEnlazada<T> {
             nuevaLista.agregar(elemento);
         }
         return nuevaLista;
+    }
+
+    @Override
+    public Iterator<T> iterator() {
+        return new Iterator<>() {
+            private Nodo<T> actual = cabeza;
+
+            @Override
+            public boolean hasNext() {
+                return actual != null;
+            }
+
+            @Override
+            public T next() {
+                if (actual == null) {
+                    throw new NoSuchElementException();
+                }
+                T valor = actual.getValor();
+                actual = actual.getSiguiente();
+                return valor;
+            }
+        };
     }
 }

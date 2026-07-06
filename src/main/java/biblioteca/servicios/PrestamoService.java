@@ -11,10 +11,13 @@ import biblioteca.modelo.EstadoPrestamo;
 import biblioteca.modelo.Libro;
 import biblioteca.modelo.Multa;
 import biblioteca.modelo.Prestamo;
+import biblioteca.estructuras.AlgoritmosOrdenamiento;
+import biblioteca.estructuras.Cola;
 import biblioteca.estructuras.ListaEnlazada;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.Optional;
 
 /**
@@ -274,6 +277,39 @@ public class PrestamoService {
      */
     public ListaEnlazada<Prestamo> listarPrestamosActivos() {
         return prestamoDAO.listarPrestamosActivos();
+    }
+
+    /**
+     * Lista los préstamos activos ordenados por antigüedad. Los más antiguos
+     * quedan primero para priorizar la atención de devoluciones.
+     *
+     * @return Lista de préstamos activos ordenada con QuickSort propio.
+     */
+    public ListaEnlazada<Prestamo> listarPrestamosActivosOrdenadosPorAntiguedad() {
+        ListaEnlazada<Prestamo> prestamos = listarPrestamosActivos();
+        Comparator<Prestamo> porFechaAntigua = Comparator.comparing(
+                Prestamo::getFechaPrestamo,
+                Comparator.nullsLast(Comparator.naturalOrder()));
+        return AlgoritmosOrdenamiento.ordenarQuickSort(
+                prestamos,
+                new Prestamo[0],
+                porFechaAntigua);
+    }
+
+    /**
+     * Construye una cola FIFO de préstamos pendientes de devolución. La cola se
+     * carga desde la lista ordenada por antigüedad.
+     *
+     * @return Cola de atención para devoluciones.
+     */
+    public Cola<Prestamo> crearColaDevolucionesPendientes() {
+        ListaEnlazada<Prestamo> prestamosOrdenados
+                = listarPrestamosActivosOrdenadosPorAntiguedad();
+        Cola<Prestamo> cola = new Cola<>();
+        for (Prestamo prestamo : prestamosOrdenados) {
+            cola.enqueue(prestamo);
+        }
+        return cola;
     }
 
     /**

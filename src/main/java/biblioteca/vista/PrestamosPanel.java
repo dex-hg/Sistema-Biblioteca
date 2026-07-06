@@ -19,7 +19,6 @@ import java.awt.Insets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Optional;
 import javax.swing.BorderFactory;
@@ -34,7 +33,10 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.table.DefaultTableModel;
+import biblioteca.estructuras.AlgoritmosOrdenamiento;
+import biblioteca.estructuras.Cola;
 import biblioteca.estructuras.ListaEnlazada;
+import biblioteca.estructuras.Pila;
 
 public class PrestamosPanel extends JPanel {
 
@@ -45,6 +47,8 @@ public class PrestamosPanel extends JPanel {
     private Estudiante estudianteSeleccionado;
     private Libro libroSeleccionado;
     private final ListaEnlazada<DetallePrestamo> carritoLibros = new ListaEnlazada<>();
+    private final Pila<DetallePrestamo> historialCarrito = new Pila<>();
+    private final Pila<DetallePrestamo> rehacerCarrito = new Pila<>();
 
     // Componentes del Panel Registrar Préstamo
     private JTextField txtCodigoEstudiante;
@@ -62,10 +66,13 @@ public class PrestamosPanel extends JPanel {
     private DefaultTableModel modeloCarrito;
     private JButton btnConfirmarPrestamo;
     private JButton btnLimpiarCarrito;
+    private JButton btnDeshacerCarrito;
+    private JButton btnRehacerCarrito;
 
     // Componentes del Panel Devoluciones
     private JTextField txtIdPrestamoDev;
     private JButton btnBuscarPrestamo;
+    private JButton btnSiguienteColaDevolucion;
     private JLabel lblDetallesPrestamoVal;
     private JButton btnConfirmarDevolucion;
     private JTable tablaPrestamosPendientes;
@@ -305,6 +312,16 @@ public class PrestamosPanel extends JPanel {
 
         JPanel pAccionesCart = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         pAccionesCart.setOpaque(false);
+
+        btnDeshacerCarrito = new JButton("Deshacer último");
+        btnDeshacerCarrito.putClientProperty("JButton.buttonType", "roundRect");
+        btnDeshacerCarrito.setEnabled(false);
+        pAccionesCart.add(btnDeshacerCarrito);
+
+        btnRehacerCarrito = new JButton("Rehacer");
+        btnRehacerCarrito.putClientProperty("JButton.buttonType", "roundRect");
+        btnRehacerCarrito.setEnabled(false);
+        pAccionesCart.add(btnRehacerCarrito);
         
         btnLimpiarCarrito = new JButton("Limpiar lista");
         btnLimpiarCarrito.putClientProperty("JButton.buttonType", "roundRect");
@@ -327,6 +344,8 @@ public class PrestamosPanel extends JPanel {
         btnBuscarLibro.addActionListener(e -> buscarLibro());
         txtIdLibro.addActionListener(e -> buscarLibro());
         btnAgregarCarrito.addActionListener(e -> agregarAlCarrito());
+        btnDeshacerCarrito.addActionListener(e -> deshacerUltimoLibroCarrito());
+        btnRehacerCarrito.addActionListener(e -> rehacerUltimoLibroCarrito());
         btnLimpiarCarrito.addActionListener(e -> limpiarCarrito());
         btnConfirmarPrestamo.addActionListener(e -> confirmarPrestamo());
 
@@ -356,6 +375,10 @@ public class PrestamosPanel extends JPanel {
         btnBuscarPrestamo.setForeground(Color.WHITE);
         btnBuscarPrestamo.putClientProperty("JButton.buttonType", "roundRect");
         pSearch.add(btnBuscarPrestamo);
+
+        btnSiguienteColaDevolucion = new JButton("Siguiente en cola");
+        btnSiguienteColaDevolucion.putClientProperty("JButton.buttonType", "roundRect");
+        pSearch.add(btnSiguienteColaDevolucion);
 
         panelSuperior.add(pSearch, BorderLayout.CENTER);
         panel.add(panelSuperior, BorderLayout.NORTH);
@@ -430,6 +453,7 @@ public class PrestamosPanel extends JPanel {
         // Eventos
         btnBuscarPrestamo.addActionListener(e -> buscarPrestamoParaDevolver());
         txtIdPrestamoDev.addActionListener(e -> buscarPrestamoParaDevolver());
+        btnSiguienteColaDevolucion.addActionListener(e -> cargarSiguientePrestamoEnCola());
         btnConfirmarDevolucion.addActionListener(e -> confirmarDevolucion());
         tablaPrestamosPendientes.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tablaPrestamosPendientes.getSelectedRow() != -1) {
@@ -507,27 +531,24 @@ public class PrestamosPanel extends JPanel {
 
     private void actualizarTablaPrestamosEstudiante() {
         ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerPrestamosPorEstudiante(usuarioLogueado.getId());
-        ArrayList<Prestamo> prestamosFiltrados = new ArrayList<>();
-        for (int i = 0; i < prestamos.size(); i++) {
-            Prestamo p = prestamos.obtener(i);
-            if (!mostrarHistorialCompletoPrestamos && p.getEstado() == EstadoPrestamo.DEVUELTO) {
-                continue;
-            }
-            if (!cumpleFiltroDias(p)) {
-                continue;
-            }
-            prestamosFiltrados.add(p);
-        }
+        ListaEnlazada<Prestamo> prestamosFiltrados = prestamos.filtrar(p
+                -> (mostrarHistorialCompletoPrestamos
+                || p.getEstado() != EstadoPrestamo.DEVUELTO)
+                && cumpleFiltroDias(p));
 
         Comparator<Prestamo> comparadorDias = Comparator.comparingInt(this::calcularDiasRestantesOrden);
         if ("Más días primero".equals(cbOrdenDiasPrestamo != null ? cbOrdenDiasPrestamo.getSelectedItem() : "")) {
             comparadorDias = comparadorDias.reversed();
         }
-        prestamosFiltrados.sort(comparadorDias);
+        ListaEnlazada<Prestamo> prestamosOrdenados
+                = AlgoritmosOrdenamiento.ordenarQuickSort(
+                        prestamosFiltrados,
+                        new Prestamo[0],
+                        comparadorDias);
 
         modeloPrestamos.setRowCount(0);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        for (Prestamo p : prestamosFiltrados) {
+        for (Prestamo p : prestamosOrdenados) {
             LocalDate fechaPrestamo = p.getFechaPrestamo();
             LocalDate fechaLimite = fechaPrestamo != null
                     ? fechaPrestamo.plusDays(PrestamoService.MAX_DIAS_PRESTAMO)
@@ -580,11 +601,11 @@ public class PrestamosPanel extends JPanel {
         if (modeloPrestamosPendientes == null) {
             return;
         }
-        ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerPrestamosActivos();
+        Cola<Prestamo> colaDevoluciones = prestamoController.obtenerColaDevolucionesPendientes();
         modeloPrestamosPendientes.setRowCount(0);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        for (int i = 0; i < prestamos.size(); i++) {
-            Prestamo p = prestamos.obtener(i);
+        while (!colaDevoluciones.isEmpty()) {
+            Prestamo p = colaDevoluciones.dequeue();
             LocalDate fechaPrestamo = p.getFechaPrestamo();
             long diasActivo = fechaPrestamo != null
                     ? ChronoUnit.DAYS.between(fechaPrestamo, LocalDate.now())
@@ -692,11 +713,14 @@ public class PrestamosPanel extends JPanel {
         detalle.setCantidad(1); // Prestamos de a 1 unidad por libro
 
         carritoLibros.agregar(detalle);
+        historialCarrito.push(detalle);
+        rehacerCarrito.clear();
         modeloCarrito.addRow(new Object[]{
             libroSeleccionado.getId(),
             libroSeleccionado.getTitulo(),
             1
         });
+        actualizarEstadoAccionesCarrito();
 
         // Limpiar sección libro
         libroSeleccionado = null;
@@ -710,7 +734,55 @@ public class PrestamosPanel extends JPanel {
 
     private void limpiarCarrito() {
         carritoLibros.clear();
+        historialCarrito.clear();
+        rehacerCarrito.clear();
         modeloCarrito.setRowCount(0);
+        actualizarEstadoAccionesCarrito();
+    }
+
+    private void deshacerUltimoLibroCarrito() {
+        if (historialCarrito.isEmpty() || carritoLibros.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay libros para deshacer.", "Lista vacía", JOptionPane.INFORMATION_MESSAGE);
+            actualizarEstadoAccionesCarrito();
+            return;
+        }
+
+        DetallePrestamo detalleDeshecho = historialCarrito.pop();
+        carritoLibros.removerUltimo();
+        rehacerCarrito.push(detalleDeshecho);
+        int ultimaFila = modeloCarrito.getRowCount() - 1;
+        if (ultimaFila >= 0) {
+            modeloCarrito.removeRow(ultimaFila);
+        }
+        actualizarEstadoAccionesCarrito();
+    }
+
+    private void rehacerUltimoLibroCarrito() {
+        if (rehacerCarrito.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay libros para rehacer.", "Sin acciones", JOptionPane.INFORMATION_MESSAGE);
+            actualizarEstadoAccionesCarrito();
+            return;
+        }
+
+        DetallePrestamo detalle = rehacerCarrito.pop();
+        carritoLibros.agregar(detalle);
+        historialCarrito.push(detalle);
+        Libro libro = detalle.getLibro();
+        modeloCarrito.addRow(new Object[]{
+            libro != null ? libro.getId() : 0,
+            libro != null ? libro.getTitulo() : "Libro no disponible",
+            detalle.getCantidad()
+        });
+        actualizarEstadoAccionesCarrito();
+    }
+
+    private void actualizarEstadoAccionesCarrito() {
+        if (btnDeshacerCarrito != null) {
+            btnDeshacerCarrito.setEnabled(!carritoLibros.isEmpty() && !historialCarrito.isEmpty());
+        }
+        if (btnRehacerCarrito != null) {
+            btnRehacerCarrito.setEnabled(!rehacerCarrito.isEmpty());
+        }
     }
 
     private void confirmarPrestamo() {
@@ -745,6 +817,18 @@ public class PrestamosPanel extends JPanel {
     }
 
     private int idPrestamoBuscadoDev = -1;
+
+    private void cargarSiguientePrestamoEnCola() {
+        Cola<Prestamo> colaDevoluciones = prestamoController.obtenerColaDevolucionesPendientes();
+        if (colaDevoluciones.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "No hay préstamos pendientes en la cola de devolución.", "Cola vacía", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        Prestamo siguiente = colaDevoluciones.peek();
+        txtIdPrestamoDev.setText(String.valueOf(siguiente.getId()));
+        cargarPrestamoParaDevolver(siguiente.getId(), false);
+    }
 
     private void buscarPrestamoParaDevolver() {
         String idStr = txtIdPrestamoDev.getText().trim();

@@ -48,6 +48,7 @@ public class MainFrame extends JFrame {
     private JLabel lblPrestamosActivosVal;
     private JLabel lblMultasPendientesVal;
     private JLabel lblAvisoPrestamosVal;
+    private JLabel lblAvisoAtrasadosVal;
     private JLabel lblAvisoMultasVal;
 
     public MainFrame(Usuario usuario) {
@@ -335,8 +336,12 @@ public class MainFrame extends JFrame {
         gbcAvisos.gridy = 0;
         avisosPanel.add(lblAvisoPrestamosVal, gbcAvisos);
 
-        lblAvisoMultasVal = crearEtiquetaAviso("Cargando multas pendientes...");
+        lblAvisoAtrasadosVal = crearEtiquetaAviso("Cargando préstamos atrasados...");
         gbcAvisos.gridy = 1;
+        avisosPanel.add(lblAvisoAtrasadosVal, gbcAvisos);
+
+        lblAvisoMultasVal = crearEtiquetaAviso("Cargando multas pendientes...");
+        gbcAvisos.gridy = 2;
         avisosPanel.add(lblAvisoMultasVal, gbcAvisos);
 
         dashboard.add(avisosPanel, BorderLayout.SOUTH);
@@ -446,13 +451,10 @@ public class MainFrame extends JFrame {
                         lblMultasPendientesVal.setText(String.valueOf(finalMultas));
                     }
                     if (lblAvisoPrestamosVal != null) {
-                        if (finalRolId == 3) {
-                            lblAvisoPrestamosVal.setText("Total de préstamos realizados: " + finalTotalPrestamosHistoricos
-                                    + " | Activos o atrasados: " + finalActivos);
-                        } else {
-                            lblAvisoPrestamosVal.setText("Préstamos no devueltos: " + finalActivos
-                                    + " | Atrasados: " + finalAtrasados);
-                        }
+                        lblAvisoPrestamosVal.setText("Préstamos no devueltos: " + finalActivos);
+                    }
+                    if (lblAvisoAtrasadosVal != null) {
+                        lblAvisoAtrasadosVal.setText("Préstamos atrasados: " + finalAtrasados);
                     }
                     if (lblAvisoMultasVal != null) {
                         if (finalRolId == 3) {

@@ -19,7 +19,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Optional;
 import javax.swing.BorderFactory;
@@ -35,6 +34,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.table.DefaultTableModel;
+import biblioteca.estructuras.AlgoritmosOrdenamiento;
 
 public class MultasPanel extends JPanel {
 
@@ -285,22 +285,19 @@ public class MultasPanel extends JPanel {
         modeloMultas.setRowCount(0);
         String filtro = comboFiltroEstado != null ? comboFiltroEstado.getSelectedItem().toString() : "TODAS";
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        ArrayList<Multa> multasFiltradas = new ArrayList<>();
-
-        for (int i = 0; i < multas.size(); i++) {
-            Multa multa = multas.obtener(i);
+        ListaEnlazada<Multa> multasFiltradas = multas.filtrar(multa -> {
             String estado = multa.getEstado() != null ? multa.getEstado() : "";
             if (!modoGestion && !mostrarHistorialCompletoMultas && "PAGADA".equalsIgnoreCase(estado)) {
-                continue;
+                return false;
             }
             if (!"TODAS".equals(filtro) && !filtro.equalsIgnoreCase(estado)) {
-                continue;
+                return false;
             }
-            multasFiltradas.add(multa);
-        }
+            return true;
+        });
 
         if (!modoGestion) {
-            ordenarMultasEstudiante(multasFiltradas);
+            multasFiltradas = ordenarMultasEstudiante(multasFiltradas);
         }
 
         for (Multa multa : multasFiltradas) {
@@ -334,7 +331,7 @@ public class MultasPanel extends JPanel {
         }
     }
 
-    private void ordenarMultasEstudiante(ArrayList<Multa> multas) {
+    private ListaEnlazada<Multa> ordenarMultasEstudiante(ListaEnlazada<Multa> multas) {
         String orden = cbOrdenMultas != null ? cbOrdenMultas.getSelectedItem().toString() : "Fecha reciente";
         Comparator<Multa> comparador = switch (orden) {
             case "Fecha antigua" -> Comparator.comparing(
@@ -346,7 +343,10 @@ public class MultasPanel extends JPanel {
                     Multa::getFechaCreacion,
                     Comparator.nullsLast(Comparator.naturalOrder())).reversed();
         };
-        multas.sort(comparador);
+        return AlgoritmosOrdenamiento.ordenarQuickSort(
+                multas,
+                new Multa[0],
+                comparador);
     }
 
     private void registrarMultaManual() {

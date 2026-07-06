@@ -78,8 +78,6 @@ public class LibroController {
             return libros;
         }
 
-        Libro[] array = libros.toArray(new Libro[0]);
-
         Comparator<Libro> comparator;
         if ("Stock".equalsIgnoreCase(criterio)) {
             comparator = Comparator.comparingInt(Libro::getStock);
@@ -88,12 +86,9 @@ public class LibroController {
             comparator = (l1, l2) -> l1.getTitulo().compareToIgnoreCase(l2.getTitulo());
         }
 
-        AlgoritmosOrdenamiento.ordenarQuickSort(array, comparator);
-        
-        ListaEnlazada<Libro> ordenada = new ListaEnlazada<>();
-        for (Libro l : array) {
-            ordenada.agregar(l);
-        }
-        return ordenada;
+        return AlgoritmosOrdenamiento.ordenarQuickSort(
+                libros,
+                new Libro[0],
+                comparator);
     }
 }
