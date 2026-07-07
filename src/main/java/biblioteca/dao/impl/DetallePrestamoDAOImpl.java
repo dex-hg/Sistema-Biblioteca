@@ -113,9 +113,11 @@ public class DetallePrestamoDAOImpl
     @Override
     public Optional<DetallePrestamo> buscarPorId(Integer id) {
         String sql = """
-            SELECT id_detalle, id_prestamo, id_libro, cantidad
-            FROM detalle_prestamo
-            WHERE id_detalle = ?
+            SELECT dp.id_detalle, dp.id_prestamo, dp.id_libro, dp.cantidad,
+                   l.titulo AS libro_titulo
+            FROM detalle_prestamo dp
+            LEFT JOIN libros l ON dp.id_libro = l.id_libro
+            WHERE dp.id_detalle = ?
             """;
 
         try (
@@ -136,6 +138,7 @@ public class DetallePrestamoDAOImpl
 
                     Libro libro = new Libro();
                     libro.setId(rs.getInt("id_libro"));
+                    libro.setTitulo(rs.getString("libro_titulo"));
                     detalle.setLibro(libro);
 
                     return Optional.of(detalle);
@@ -153,8 +156,10 @@ public class DetallePrestamoDAOImpl
     public ListaEnlazada<DetallePrestamo> listarTodos() {
         ListaEnlazada<DetallePrestamo> detalles = new ListaEnlazada<>();
         String sql = """
-            SELECT id_detalle, id_prestamo, id_libro, cantidad
-            FROM detalle_prestamo
+            SELECT dp.id_detalle, dp.id_prestamo, dp.id_libro, dp.cantidad,
+                   l.titulo AS libro_titulo
+            FROM detalle_prestamo dp
+            LEFT JOIN libros l ON dp.id_libro = l.id_libro
             """;
 
         try (
@@ -173,6 +178,7 @@ public class DetallePrestamoDAOImpl
 
                 Libro libro = new Libro();
                 libro.setId(rs.getInt("id_libro"));
+                libro.setTitulo(rs.getString("libro_titulo"));
                 detalle.setLibro(libro);
 
                 detalles.agregar(detalle);
@@ -189,9 +195,11 @@ public class DetallePrestamoDAOImpl
     public ListaEnlazada<DetallePrestamo> buscarPorPrestamo(int idPrestamo) {
         ListaEnlazada<DetallePrestamo> detalles = new ListaEnlazada<>();
         String sql = """
-            SELECT id_detalle, id_prestamo, id_libro, cantidad
-            FROM detalle_prestamo
-            WHERE id_prestamo = ?
+            SELECT dp.id_detalle, dp.id_prestamo, dp.id_libro, dp.cantidad,
+                   l.titulo AS libro_titulo
+            FROM detalle_prestamo dp
+            LEFT JOIN libros l ON dp.id_libro = l.id_libro
+            WHERE dp.id_prestamo = ?
             """;
 
         try (
@@ -212,6 +220,7 @@ public class DetallePrestamoDAOImpl
 
                     Libro libro = new Libro();
                     libro.setId(rs.getInt("id_libro"));
+                    libro.setTitulo(rs.getString("libro_titulo"));
                     detalle.setLibro(libro);
 
                     detalles.agregar(detalle);

@@ -1,5 +1,6 @@
 package biblioteca.controlador;
 
+import biblioteca.modelo.Multa;
 import biblioteca.modelo.Prestamo;
 import biblioteca.servicios.ReporteService;
 import biblioteca.estructuras.ListaEnlazada;
@@ -31,5 +32,12 @@ public class ReporteController {
      */
     public ListaEnlazada<Prestamo> obtenerHistorialGeneral() {
         return reporteService.obtenerHistorialGeneral();
+    }
+
+    /**
+     * Obtiene el historial general de multas.
+     */
+    public ListaEnlazada<Multa> obtenerHistorialMultas() {
+        return reporteService.obtenerHistorialMultas();
     }
 }

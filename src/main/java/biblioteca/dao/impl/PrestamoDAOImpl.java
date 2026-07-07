@@ -33,6 +33,7 @@ public class PrestamoDAOImpl
             Estudiante estudiante = new Estudiante();
             estudiante.setId(idEstudiante);
             try {
+                estudiante.setCodigo(rs.getString("estudiante_codigo"));
                 estudiante.setNombres(rs.getString("estudiante_nombres"));
                 estudiante.setApellidos(rs.getString("estudiante_apellidos"));
                 estudiante.setNombreCompleto(rs.getString("estudiante_nombre_completo"));
@@ -125,7 +126,7 @@ public class PrestamoDAOImpl
         // tanto ACTIVO como ATRASADO (préstamos no devueltos).
         String sql = """
             SELECT p.id_prestamo, p.id_estudiante, p.id_usuario, p.fecha_prestamo, p.fecha_devolucion, p.estado,
-                   e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
+                   e.codigo AS estudiante_codigo, e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
                    u.nombre_completo AS estudiante_nombre_completo,
                    b.nombre_completo AS bibliotecario_nombre_completo
             FROM prestamos p
@@ -156,7 +157,7 @@ public class PrestamoDAOImpl
 
         String sql = """
             SELECT p.id_prestamo, p.id_estudiante, p.id_usuario, p.fecha_prestamo, p.fecha_devolucion, p.estado,
-                   e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
+                   e.codigo AS estudiante_codigo, e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
                    u.nombre_completo AS estudiante_nombre_completo,
                    b.nombre_completo AS bibliotecario_nombre_completo
             FROM prestamos p
@@ -256,7 +257,7 @@ public class PrestamoDAOImpl
     public Optional<Prestamo> buscarPorId(Integer id) {
         String sql = """
             SELECT p.id_prestamo, p.id_estudiante, p.id_usuario, p.fecha_prestamo, p.fecha_devolucion, p.estado,
-                   e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
+                   e.codigo AS estudiante_codigo, e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
                    u.nombre_completo AS estudiante_nombre_completo,
                    b.nombre_completo AS bibliotecario_nombre_completo
             FROM prestamos p
@@ -289,7 +290,7 @@ public class PrestamoDAOImpl
         ListaEnlazada<Prestamo> prestamos = new ListaEnlazada<>();
         String sql = """
             SELECT p.id_prestamo, p.id_estudiante, p.id_usuario, p.fecha_prestamo, p.fecha_devolucion, p.estado,
-                   e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
+                   e.codigo AS estudiante_codigo, e.nombres AS estudiante_nombres, e.apellidos AS estudiante_apellidos,
                    u.nombre_completo AS estudiante_nombre_completo,
                    b.nombre_completo AS bibliotecario_nombre_completo
             FROM prestamos p

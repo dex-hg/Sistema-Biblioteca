@@ -10,6 +10,7 @@ public class Multa {
     private String motivo;
     private String estado;
     private LocalDate fechaCreacion;
+    private LocalDate fechaPago;
 
     public int getId() {
         return id;
@@ -61,6 +62,14 @@ public class Multa {
 
     public void setFechaCreacion(LocalDate fechaCreacion) {
         this.fechaCreacion = fechaCreacion;
+    }
+
+    public LocalDate getFechaPago() {
+        return fechaPago;
+    }
+
+    public void setFechaPago(LocalDate fechaPago) {
+        this.fechaPago = fechaPago;
     }
 
 }

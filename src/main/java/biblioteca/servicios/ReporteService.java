@@ -2,6 +2,7 @@ package biblioteca.servicios;
 
 import biblioteca.conexion.ConexionBD;
 import biblioteca.estructuras.AlgoritmosOrdenamiento;
+import biblioteca.modelo.Multa;
 import biblioteca.modelo.Prestamo;
 import biblioteca.estructuras.ListaEnlazada;
 
@@ -16,9 +17,11 @@ public class ReporteService {
     private static final int LIMITE_RANKING_LIBROS = 5;
 
     private final PrestamoService prestamoService;
+    private final MultaService multaService;
 
     public ReporteService() {
         this.prestamoService = new PrestamoService();
+        this.multaService = new MultaService();
     }
 
     /**
@@ -77,5 +80,20 @@ public class ReporteService {
      */
     public ListaEnlazada<Prestamo> obtenerHistorialGeneral() {
         return prestamoService.listarTodos();
+    }
+
+    /**
+     * Obtiene todas las multas y completa el préstamo asociado para reportes.
+     */
+    public ListaEnlazada<Multa> obtenerHistorialMultas() {
+        ListaEnlazada<Multa> multas = multaService.listarTodas();
+        for (Multa multa : multas) {
+            if (multa.getPrestamo() == null || multa.getPrestamo().getId() <= 0) {
+                continue;
+            }
+            prestamoService.buscarPorId(multa.getPrestamo().getId())
+                    .ifPresent(multa::setPrestamo);
+        }
+        return multas;
     }
 }

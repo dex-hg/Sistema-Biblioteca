@@ -25,8 +25,9 @@ public class MultaDAOImpl
              monto,
              motivo,
              estado,
-             fecha_creacion)
-            VALUES (?, ?, ?, ?, ?)
+             fecha_creacion,
+             fecha_pago)
+            VALUES (?, ?, ?, ?, ?, ?)
             """;
 
         try (
@@ -60,6 +61,8 @@ public class MultaDAOImpl
                     Date.valueOf(multa.getFechaCreacion() != null ? multa.getFechaCreacion() : LocalDate.now())
             );
 
+            setFechaPagoSegunEstado(ps, 6, multa);
+
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
@@ -81,7 +84,8 @@ public class MultaDAOImpl
                 monto = ?,
                 motivo = ?,
                 estado = ?,
-                fecha_creacion = ?
+                fecha_creacion = ?,
+                fecha_pago = ?
             WHERE id_multa = ?
             """;
 
@@ -94,7 +98,8 @@ public class MultaDAOImpl
             ps.setString(3, multa.getMotivo());
             ps.setString(4, multa.getEstado() != null ? multa.getEstado() : "PENDIENTE");
             ps.setDate(5, Date.valueOf(multa.getFechaCreacion() != null ? multa.getFechaCreacion() : LocalDate.now()));
-            ps.setInt(6, multa.getId());
+            setFechaPagoSegunEstado(ps, 6, multa);
+            ps.setInt(7, multa.getId());
 
             return ps.executeUpdate() > 0;
 
@@ -128,7 +133,7 @@ public class MultaDAOImpl
     @Override
     public Optional<Multa> buscarPorId(Integer id) {
         String sql = """
-            SELECT id_multa, id_prestamo, monto, motivo, estado, fecha_creacion
+            SELECT id_multa, id_prestamo, monto, motivo, estado, fecha_creacion, fecha_pago
             FROM multas
             WHERE id_multa = ?
             """;
@@ -149,6 +154,8 @@ public class MultaDAOImpl
 
                     java.sql.Date fCreacion = rs.getDate("fecha_creacion");
                     multa.setFechaCreacion(fCreacion != null ? fCreacion.toLocalDate() : null);
+                    java.sql.Date fPago = rs.getDate("fecha_pago");
+                    multa.setFechaPago(fPago != null ? fPago.toLocalDate() : null);
 
                     Prestamo prestamo = new Prestamo();
                     prestamo.setId(rs.getInt("id_prestamo"));
@@ -169,7 +176,7 @@ public class MultaDAOImpl
     public ListaEnlazada<Multa> listarTodos() {
         ListaEnlazada<Multa> multas = new ListaEnlazada<>();
         String sql = """
-            SELECT id_multa, id_prestamo, monto, motivo, estado, fecha_creacion
+            SELECT id_multa, id_prestamo, monto, motivo, estado, fecha_creacion, fecha_pago
             FROM multas
             """;
 
@@ -187,6 +194,8 @@ public class MultaDAOImpl
 
                 java.sql.Date fCreacion = rs.getDate("fecha_creacion");
                 multa.setFechaCreacion(fCreacion != null ? fCreacion.toLocalDate() : null);
+                java.sql.Date fPago = rs.getDate("fecha_pago");
+                multa.setFechaPago(fPago != null ? fPago.toLocalDate() : null);
 
                 Prestamo prestamo = new Prestamo();
                 prestamo.setId(rs.getInt("id_prestamo"));
@@ -200,6 +209,22 @@ public class MultaDAOImpl
         }
 
         return multas;
+    }
+
+    private void setFechaPagoSegunEstado(
+            PreparedStatement ps,
+            int indice,
+            Multa multa
+    ) throws SQLException {
+        String estado = multa.getEstado() != null ? multa.getEstado() : "PENDIENTE";
+        if ("PAGADA".equalsIgnoreCase(estado)) {
+            LocalDate fechaPago = multa.getFechaPago() != null
+                    ? multa.getFechaPago()
+                    : LocalDate.now();
+            ps.setDate(indice, Date.valueOf(fechaPago));
+        } else {
+            ps.setNull(indice, Types.DATE);
+        }
     }
 
 }

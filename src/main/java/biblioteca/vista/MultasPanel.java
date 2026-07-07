@@ -29,6 +29,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -58,6 +59,9 @@ public class MultasPanel extends JPanel {
     private JButton btnRegistrarMulta;
     private JButton btnMarcarPagada;
     private JButton btnActualizar;
+    private JTextField txtBuscarPrestamoPorCodigo;
+    private JTable tablaHistorialPrestamos;
+    private DefaultTableModel modeloHistorialPrestamos;
     private boolean mostrarHistorialCompletoMultas = false;
 
     public MultasPanel() {
@@ -119,13 +123,28 @@ public class MultasPanel extends JPanel {
 
         JPanel contenido = new JPanel(new BorderLayout(15, 15));
         contenido.setOpaque(false);
-        contenido.add(crearPanelTabla(), BorderLayout.CENTER);
+        JPanel gestionMultas = new JPanel(new BorderLayout(15, 15));
+        gestionMultas.setOpaque(false);
+        gestionMultas.add(crearPanelTabla(), BorderLayout.CENTER);
         if (modoGestion) {
-            contenido.add(crearPanelFormulario(), BorderLayout.EAST);
+            gestionMultas.add(crearPanelFormulario(), BorderLayout.EAST);
+            JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
+            split.setTopComponent(gestionMultas);
+            split.setBottomComponent(crearPanelHistorialPrestamos());
+            split.setResizeWeight(0.72);
+            split.setDividerLocation(520);
+            split.setOpaque(false);
+            split.setBorder(null);
+            contenido.add(split, BorderLayout.CENTER);
+        } else {
+            contenido.add(gestionMultas, BorderLayout.CENTER);
         }
         add(contenido, BorderLayout.CENTER);
 
-        btnActualizar.addActionListener(e -> recargarMultas());
+        btnActualizar.addActionListener(e -> {
+            recargarMultas();
+            cargarTablaHistorialPrestamos();
+        });
         comboFiltroEstado.addActionListener(e -> recargarMultas());
         if (!modoGestion) {
             cbOrdenMultas.addActionListener(e -> recargarMultas());
@@ -140,6 +159,7 @@ public class MultasPanel extends JPanel {
         if (modoGestion) {
             btnRegistrarMulta.addActionListener(e -> registrarMultaManual());
             btnMarcarPagada.addActionListener(e -> marcarMultaPagada());
+            cargarTablaHistorialPrestamos();
             chkLibroInutilizable.addActionListener(e -> {
                 txtIdLibroAfectado.setEnabled(chkLibroInutilizable.isSelected());
                 if (!chkLibroInutilizable.isSelected()) {
@@ -276,6 +296,111 @@ public class MultasPanel extends JPanel {
         panel.add(new JLabel(), gbc);
 
         return panel;
+    }
+
+    private JPanel crearPanelHistorialPrestamos() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(222, 226, 230)),
+                "Historial de préstamos",
+                0, 0,
+                new Font("Segoe UI", Font.BOLD, 12),
+                new Color(73, 80, 87)
+        ));
+
+        JPanel buscador = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        buscador.setOpaque(false);
+        buscador.add(new JLabel("Código de estudiante:"));
+        txtBuscarPrestamoPorCodigo = new JTextField(18);
+        txtBuscarPrestamoPorCodigo.putClientProperty("JTextField.placeholderText", "Ej. EST2026101");
+        buscador.add(txtBuscarPrestamoPorCodigo);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.putClientProperty("JButton.buttonType", "roundRect");
+        btnBuscar.addActionListener(e -> cargarTablaHistorialPrestamos());
+        buscador.add(btnBuscar);
+        panel.add(buscador, BorderLayout.NORTH);
+
+        modeloHistorialPrestamos = new DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID Préstamo", "Código", "Estudiante", "Libros prestados"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        tablaHistorialPrestamos = new JTable(modeloHistorialPrestamos);
+        tablaHistorialPrestamos.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        tablaHistorialPrestamos.setRowHeight(24);
+        tablaHistorialPrestamos.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
+        panel.add(new JScrollPane(tablaHistorialPrestamos), BorderLayout.CENTER);
+
+        txtBuscarPrestamoPorCodigo.addActionListener(e -> cargarTablaHistorialPrestamos());
+        tablaHistorialPrestamos.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaHistorialPrestamos.getSelectedRow() != -1) {
+                int row = tablaHistorialPrestamos.convertRowIndexToModel(tablaHistorialPrestamos.getSelectedRow());
+                txtIdPrestamo.setText(modeloHistorialPrestamos.getValueAt(row, 0).toString());
+            }
+        });
+
+        return panel;
+    }
+
+    private void cargarTablaHistorialPrestamos() {
+        if (modeloHistorialPrestamos == null) {
+            return;
+        }
+
+        String codigoFiltro = txtBuscarPrestamoPorCodigo != null
+                ? txtBuscarPrestamoPorCodigo.getText().trim().toLowerCase()
+                : "";
+        ListaEnlazada<Prestamo> prestamos = prestamoController.obtenerTodos();
+        modeloHistorialPrestamos.setRowCount(0);
+        for (Prestamo prestamo : prestamos) {
+            String codigo = prestamo.getEstudiante() != null
+                    && prestamo.getEstudiante().getCodigo() != null
+                            ? prestamo.getEstudiante().getCodigo()
+                            : "";
+            if (!codigoFiltro.isEmpty()
+                    && !codigo.toLowerCase().contains(codigoFiltro)) {
+                continue;
+            }
+
+            modeloHistorialPrestamos.addRow(new Object[]{
+                prestamo.getId(),
+                codigo,
+                prestamo.getEstudiante() != null
+                        ? prestamo.getEstudiante().getNombreCompleto()
+                        : "Desconocido",
+                construirResumenLibrosPrestamo(prestamo.getId())
+            });
+        }
+    }
+
+    private String construirResumenLibrosPrestamo(int idPrestamo) {
+        ListaEnlazada<DetallePrestamo> detalles = prestamoController.obtenerDetallesPrestamo(idPrestamo);
+        if (detalles.isEmpty()) {
+            return "Sin detalle";
+        }
+
+        StringBuilder resumen = new StringBuilder();
+        for (int i = 0; i < detalles.size(); i++) {
+            DetallePrestamo detalle = detalles.obtener(i);
+            int idLibro = detalle.getLibro() != null ? detalle.getLibro().getId() : 0;
+            String titulo = detalle.getLibro() != null
+                    && detalle.getLibro().getTitulo() != null
+                    && !detalle.getLibro().getTitulo().trim().isEmpty()
+                            ? detalle.getLibro().getTitulo()
+                            : libroService.buscarLibroPorId(idLibro)
+                                    .map(Libro::getTitulo)
+                                    .orElse("Libro ID " + idLibro);
+            if (i > 0) {
+                resumen.append(", ");
+            }
+            resumen.append(idLibro).append(" - ").append(titulo);
+        }
+        return resumen.toString();
     }
 
     public void recargarMultas() {

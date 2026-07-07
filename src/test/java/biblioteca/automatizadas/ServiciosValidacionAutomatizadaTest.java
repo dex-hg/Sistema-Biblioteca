@@ -1,12 +1,16 @@
 package biblioteca.automatizadas;
 
+import biblioteca.dao.interfaces.MultaDAO;
 import biblioteca.dao.interfaces.EstudianteDAO;
 import biblioteca.dao.interfaces.LibroDAO;
 import biblioteca.estructuras.ListaEnlazada;
 import biblioteca.modelo.Estudiante;
 import biblioteca.modelo.Libro;
+import biblioteca.modelo.Multa;
+import biblioteca.modelo.Prestamo;
 import biblioteca.servicios.EstudianteService;
 import biblioteca.servicios.LibroService;
+import biblioteca.servicios.MultaService;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -83,6 +87,23 @@ class ServiciosValidacionAutomatizadaTest {
 
         assertFalse(service.registrarEstudiante(duplicado));
         assertEquals(0, dao.guardados);
+    }
+
+    @Test
+    void multaServiceDebeAsignarFechaPagoAlMarcarPagada() {
+        MultaDaoMemoria dao = new MultaDaoMemoria();
+        Multa multa = new Multa();
+        multa.setId(3);
+        multa.setPrestamo(new Prestamo());
+        multa.setMonto(10.0);
+        multa.setMotivo("Mancha en la portada");
+        multa.setEstado("PENDIENTE");
+        dao.multas.agregar(multa);
+        MultaService service = new MultaService(dao, null);
+
+        assertTrue(service.pagarMulta(3));
+        assertEquals("PAGADA", multa.getEstado());
+        assertTrue(multa.getFechaPago() != null);
     }
 
     private Libro libro(String titulo, String autor, int stock) {
@@ -213,6 +234,42 @@ class ServiciosValidacionAutomatizadaTest {
         @Override
         public ListaEnlazada<Estudiante> listarTodos() {
             return estudiantes;
+        }
+    }
+
+    private static class MultaDaoMemoria implements MultaDAO {
+
+        private final ListaEnlazada<Multa> multas = new ListaEnlazada<>();
+
+        @Override
+        public boolean guardar(Multa multa) {
+            multas.agregar(multa);
+            return true;
+        }
+
+        @Override
+        public boolean actualizar(Multa multa) {
+            return buscarPorId(multa.getId()).isPresent();
+        }
+
+        @Override
+        public boolean eliminar(Integer id) {
+            return true;
+        }
+
+        @Override
+        public Optional<Multa> buscarPorId(Integer id) {
+            for (Multa multa : multas) {
+                if (multa.getId() == id) {
+                    return Optional.of(multa);
+                }
+            }
+            return Optional.empty();
+        }
+
+        @Override
+        public ListaEnlazada<Multa> listarTodos() {
+            return multas;
         }
     }
 }

@@ -218,11 +218,9 @@ public class MainFrame extends JFrame {
             cardLayout.show(panelContenido, "LIBROS");
         });
         btnPres.addActionListener(e -> {
-            panelPrestamos.actualizarTablaPrestamos();
             cardLayout.show(panelContenido, "PRESTAMOS");
         });
         btnMultas.addActionListener(e -> {
-            panelMultas.recargarMultas();
             cardLayout.show(panelContenido, "MULTAS");
         });
         if (btnRep != null) {

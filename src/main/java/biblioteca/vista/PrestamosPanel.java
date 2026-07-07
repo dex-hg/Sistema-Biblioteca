@@ -68,6 +68,12 @@ public class PrestamosPanel extends JPanel {
     private JButton btnLimpiarCarrito;
     private JButton btnDeshacerCarrito;
     private JButton btnRehacerCarrito;
+    private JTextField txtBuscarEstudianteReferencia;
+    private JTable tablaEstudiantesReferencia;
+    private DefaultTableModel modeloEstudiantesReferencia;
+    private JTextField txtBuscarLibroReferencia;
+    private JTable tablaLibrosReferencia;
+    private DefaultTableModel modeloLibrosReferencia;
 
     // Componentes del Panel Devoluciones
     private JTextField txtIdPrestamoDev;
@@ -81,6 +87,9 @@ public class PrestamosPanel extends JPanel {
     // Tabla general de préstamos en el sistema
     private JTable tablaPrestamos;
     private DefaultTableModel modeloPrestamos;
+    private JTextField txtBuscarHistorialEstudiante;
+    private JTextField txtBuscarHistorialLibro;
+    private JComboBox<String> cbFiltroEstadoHistorial;
     private JComboBox<String> cbFiltroDiasPrestamo;
     private JComboBox<String> cbOrdenDiasPrestamo;
     private JButton btnToggleHistorialPrestamos;
@@ -114,19 +123,13 @@ public class PrestamosPanel extends JPanel {
 
         JPanel panelRegistro = crearPanelRegistroPrestamo();
         JPanel panelDevolucion = crearPanelDevolucion();
+        JPanel panelHistorial = crearPanelTablaGeneralPrestamos();
 
         tabbedPane.addTab("Registrar Préstamo", panelRegistro);
         tabbedPane.addTab("Registrar Devolución", panelDevolucion);
+        tabbedPane.addTab("Historial", panelHistorial);
 
-        // SplitPane para colocar las pestañas arriba/izquierda y la tabla general de préstamos al lado/abajo
-        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
-        splitPane.setOpaque(false);
-        splitPane.setTopComponent(tabbedPane);
-        splitPane.setBottomComponent(crearPanelTablaGeneralPrestamos());
-        splitPane.setDividerLocation(520);
-        splitPane.setResizeWeight(0.65);
-
-        add(splitPane, BorderLayout.CENTER);
+        add(tabbedPane, BorderLayout.CENTER);
     }
 
     private boolean esEstudiante() {
@@ -210,9 +213,12 @@ public class PrestamosPanel extends JPanel {
     }
 
     private JPanel crearPanelRegistroPrestamo() {
-        JPanel panel = new JPanel(new GridBagLayout());
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        JPanel panelFormulario = new JPanel(new GridBagLayout());
+        panelFormulario.setOpaque(false);
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.fill = GridBagConstraints.BOTH;
@@ -252,7 +258,7 @@ public class PrestamosPanel extends JPanel {
         pEstudiante.add(lblEstadoEstudianteVal, gbcEst);
 
         gbc.gridx = 0; gbc.weightx = 0.4; gbc.gridheight = 1;
-        panel.add(pEstudiante, gbc);
+        panelFormulario.add(pEstudiante, gbc);
 
         // --- 2. BUSCADOR DE LIBRO ---
         JPanel pLibro = new JPanel(new GridBagLayout());
@@ -294,7 +300,7 @@ public class PrestamosPanel extends JPanel {
         pLibro.add(btnAgregarCarrito, gbcLib);
 
         gbc.gridy = 1;
-        panel.add(pLibro, gbc);
+        panelFormulario.add(pLibro, gbc);
 
         // --- 3. TABLA DEL CARRITO ---
         JPanel pCarrito = new JPanel(new BorderLayout(5, 5));
@@ -336,7 +342,10 @@ public class PrestamosPanel extends JPanel {
         pCarrito.add(pAccionesCart, BorderLayout.SOUTH);
 
         gbc.gridx = 1; gbc.gridy = 0; gbc.weightx = 0.6; gbc.gridheight = 2;
-        panel.add(pCarrito, gbc);
+        panelFormulario.add(pCarrito, gbc);
+
+        panel.add(panelFormulario, BorderLayout.CENTER);
+        panel.add(crearPanelReferenciasRegistro(), BorderLayout.SOUTH);
 
         // Eventos
         btnBuscarEstudiante.addActionListener(e -> buscarEstudiante());
@@ -348,8 +357,154 @@ public class PrestamosPanel extends JPanel {
         btnRehacerCarrito.addActionListener(e -> rehacerUltimoLibroCarrito());
         btnLimpiarCarrito.addActionListener(e -> limpiarCarrito());
         btnConfirmarPrestamo.addActionListener(e -> confirmarPrestamo());
+        txtBuscarEstudianteReferencia.addActionListener(e -> cargarTablaEstudiantesReferencia());
+        txtBuscarLibroReferencia.addActionListener(e -> cargarTablaLibrosReferencia());
+        tablaEstudiantesReferencia.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaEstudiantesReferencia.getSelectedRow() != -1) {
+                int row = tablaEstudiantesReferencia.convertRowIndexToModel(tablaEstudiantesReferencia.getSelectedRow());
+                txtCodigoEstudiante.setText(modeloEstudiantesReferencia.getValueAt(row, 1).toString());
+                buscarEstudiante();
+            }
+        });
+        tablaLibrosReferencia.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting() && tablaLibrosReferencia.getSelectedRow() != -1) {
+                int row = tablaLibrosReferencia.convertRowIndexToModel(tablaLibrosReferencia.getSelectedRow());
+                txtIdLibro.setText(modeloLibrosReferencia.getValueAt(row, 0).toString());
+                buscarLibro();
+            }
+        });
+
+        cargarTablaEstudiantesReferencia();
+        cargarTablaLibrosReferencia();
 
         return panel;
+    }
+
+    private JPanel crearPanelReferenciasRegistro() {
+        JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.insets = new Insets(5, 5, 0, 5);
+        gbc.weightx = 1.0;
+        gbc.weighty = 1.0;
+
+        JPanel estudiantes = crearPanelReferenciaEstudiantes();
+        gbc.gridx = 0;
+        panel.add(estudiantes, gbc);
+
+        JPanel libros = crearPanelReferenciaLibros();
+        gbc.gridx = 1;
+        panel.add(libros, gbc);
+
+        return panel;
+    }
+
+    private JPanel crearPanelReferenciaEstudiantes() {
+        JPanel panel = new JPanel(new BorderLayout(6, 6));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createTitledBorder("Alumnos registrados"));
+
+        JPanel buscador = new JPanel(new BorderLayout(6, 0));
+        buscador.setOpaque(false);
+        buscador.add(new JLabel("Nombre:"), BorderLayout.WEST);
+        txtBuscarEstudianteReferencia = new JTextField();
+        txtBuscarEstudianteReferencia.putClientProperty("JTextField.placeholderText", "Buscar alumno por nombre");
+        buscador.add(txtBuscarEstudianteReferencia, BorderLayout.CENTER);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.putClientProperty("JButton.buttonType", "roundRect");
+        btnBuscar.addActionListener(e -> cargarTablaEstudiantesReferencia());
+        buscador.add(btnBuscar, BorderLayout.EAST);
+        panel.add(buscador, BorderLayout.NORTH);
+
+        modeloEstudiantesReferencia = new DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID", "Código", "Nombre"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        tablaEstudiantesReferencia = new JTable(modeloEstudiantesReferencia);
+        tablaEstudiantesReferencia.setRowHeight(22);
+        JScrollPane scroll = new JScrollPane(tablaEstudiantesReferencia);
+        scroll.setPreferredSize(new Dimension(0, 130));
+        panel.add(scroll, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private JPanel crearPanelReferenciaLibros() {
+        JPanel panel = new JPanel(new BorderLayout(6, 6));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createTitledBorder("Libros registrados"));
+
+        JPanel buscador = new JPanel(new BorderLayout(6, 0));
+        buscador.setOpaque(false);
+        buscador.add(new JLabel("Título:"), BorderLayout.WEST);
+        txtBuscarLibroReferencia = new JTextField();
+        txtBuscarLibroReferencia.putClientProperty("JTextField.placeholderText", "Buscar libro por título");
+        buscador.add(txtBuscarLibroReferencia, BorderLayout.CENTER);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.putClientProperty("JButton.buttonType", "roundRect");
+        btnBuscar.addActionListener(e -> cargarTablaLibrosReferencia());
+        buscador.add(btnBuscar, BorderLayout.EAST);
+        panel.add(buscador, BorderLayout.NORTH);
+
+        modeloLibrosReferencia = new DefaultTableModel(
+                new Object[][]{},
+                new String[]{"ID", "Título"}
+        ) {
+            @Override
+            public boolean isCellEditable(int row, int col) {
+                return false;
+            }
+        };
+        tablaLibrosReferencia = new JTable(modeloLibrosReferencia);
+        tablaLibrosReferencia.setRowHeight(22);
+        JScrollPane scroll = new JScrollPane(tablaLibrosReferencia);
+        scroll.setPreferredSize(new Dimension(0, 130));
+        panel.add(scroll, BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private void cargarTablaEstudiantesReferencia() {
+        if (modeloEstudiantesReferencia == null) {
+            return;
+        }
+        String criterio = txtBuscarEstudianteReferencia != null
+                ? txtBuscarEstudianteReferencia.getText()
+                : "";
+        ListaEnlazada<Estudiante> estudiantes
+                = prestamoController.buscarEstudiantesPorNombre(criterio);
+        modeloEstudiantesReferencia.setRowCount(0);
+        for (Estudiante estudiante : estudiantes) {
+            modeloEstudiantesReferencia.addRow(new Object[]{
+                estudiante.getId(),
+                estudiante.getCodigo() != null ? estudiante.getCodigo() : "",
+                estudiante.getNombreCompleto() != null ? estudiante.getNombreCompleto() : ""
+            });
+        }
+    }
+
+    private void cargarTablaLibrosReferencia() {
+        if (modeloLibrosReferencia == null) {
+            return;
+        }
+        String criterio = txtBuscarLibroReferencia != null
+                ? txtBuscarLibroReferencia.getText()
+                : "";
+        ListaEnlazada<Libro> libros = prestamoController.buscarLibrosPorTitulo(criterio);
+        modeloLibrosReferencia.setRowCount(0);
+        for (Libro libro : libros) {
+            modeloLibrosReferencia.addRow(new Object[]{
+                libro.getId(),
+                libro.getTitulo() != null ? libro.getTitulo() : ""
+            });
+        }
     }
 
     private JPanel crearPanelDevolucion() {
@@ -468,19 +623,37 @@ public class PrestamosPanel extends JPanel {
     }
 
     private JPanel crearPanelTablaGeneralPrestamos() {
-        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
         panel.setOpaque(false);
         panel.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(222, 226, 230)),
-                "Historial de Préstamos Registrados (Filtro por todos)",
+                "Historial de préstamos registrados",
                 0, 0,
                 new Font("Segoe UI", Font.BOLD, 12),
                 new Color(73, 80, 87)
         ));
 
+        JPanel filtros = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        filtros.setOpaque(false);
+        filtros.add(new JLabel("Estudiante:"));
+        txtBuscarHistorialEstudiante = new JTextField(18);
+        txtBuscarHistorialEstudiante.putClientProperty("JTextField.placeholderText", "Nombre de estudiante");
+        filtros.add(txtBuscarHistorialEstudiante);
+        filtros.add(new JLabel("Libro:"));
+        txtBuscarHistorialLibro = new JTextField(18);
+        txtBuscarHistorialLibro.putClientProperty("JTextField.placeholderText", "Título de libro");
+        filtros.add(txtBuscarHistorialLibro);
+        filtros.add(new JLabel("Estado:"));
+        cbFiltroEstadoHistorial = new JComboBox<>(new String[]{"TODOS", "ACTIVO", "ATRASADO", "DEVUELTO"});
+        filtros.add(cbFiltroEstadoHistorial);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.putClientProperty("JButton.buttonType", "roundRect");
+        filtros.add(btnBuscar);
+        panel.add(filtros, BorderLayout.NORTH);
+
         modeloPrestamos = new DefaultTableModel(
                 new Object[][]{},
-                new String[]{"ID Préstamo", "Estudiante", "Bibliotecario", "Fecha Préstamo", "Fecha Devolución", "Estado"}
+                new String[]{"ID Préstamo", "Estudiante", "Libros", "Bibliotecario", "Fecha Préstamo", "Fecha Devolución", "Estado"}
         ) {
             @Override
             public boolean isCellEditable(int row, int col) {
@@ -494,13 +667,17 @@ public class PrestamosPanel extends JPanel {
         JScrollPane scroll = new JScrollPane(tablaPrestamos);
         panel.add(scroll, BorderLayout.CENTER);
 
-        // Al hacer doble clic en un préstamo, cargar su ID en el panel de devolución
         tablaPrestamos.getSelectionModel().addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting() && tablaPrestamos.getSelectedRow() != -1) {
-                String id = tablaPrestamos.getValueAt(tablaPrestamos.getSelectedRow(), 0).toString();
+                int row = tablaPrestamos.convertRowIndexToModel(tablaPrestamos.getSelectedRow());
+                String id = modeloPrestamos.getValueAt(row, 0).toString();
                 txtIdPrestamoDev.setText(id);
             }
         });
+        btnBuscar.addActionListener(e -> actualizarTablaPrestamos());
+        txtBuscarHistorialEstudiante.addActionListener(e -> actualizarTablaPrestamos());
+        txtBuscarHistorialLibro.addActionListener(e -> actualizarTablaPrestamos());
+        cbFiltroEstadoHistorial.addActionListener(e -> actualizarTablaPrestamos());
 
         return panel;
     }
@@ -516,10 +693,15 @@ public class PrestamosPanel extends JPanel {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
         for (int i = 0; i < prestamos.size(); i++) {
             Prestamo p = prestamos.obtener(i);
+            String resumenLibros = construirResumenLibrosTabla(p.getId());
+            if (!cumpleFiltroHistorial(p, resumenLibros)) {
+                continue;
+            }
             String fDev = (p.getFechaDevolucion() != null) ? p.getFechaDevolucion().format(formatter) : "-";
             modeloPrestamos.addRow(new Object[]{
                 p.getId(),
                 p.getEstudiante() != null ? p.getEstudiante().getNombreCompleto() : "Desconocido",
+                resumenLibros,
                 p.getBibliotecario() != null ? p.getBibliotecario().getNombreCompleto() : "Desconocido",
                 p.getFechaPrestamo() != null ? p.getFechaPrestamo().format(formatter) : "",
                 fDev,
@@ -527,6 +709,29 @@ public class PrestamosPanel extends JPanel {
             });
         }
         actualizarTablaPrestamosPendientes();
+    }
+
+    private boolean cumpleFiltroHistorial(Prestamo prestamo, String resumenLibros) {
+        String filtroEstudiante = txtBuscarHistorialEstudiante != null
+                ? txtBuscarHistorialEstudiante.getText().trim().toLowerCase()
+                : "";
+        String filtroLibro = txtBuscarHistorialLibro != null
+                ? txtBuscarHistorialLibro.getText().trim().toLowerCase()
+                : "";
+        String filtroEstado = cbFiltroEstadoHistorial != null
+                ? cbFiltroEstadoHistorial.getSelectedItem().toString()
+                : "TODOS";
+
+        String estudiante = prestamo.getEstudiante() != null
+                && prestamo.getEstudiante().getNombreCompleto() != null
+                        ? prestamo.getEstudiante().getNombreCompleto().toLowerCase()
+                        : "";
+        String libros = resumenLibros != null ? resumenLibros.toLowerCase() : "";
+        String estado = prestamo.getEstado() != null ? prestamo.getEstado().name() : "";
+
+        return (filtroEstudiante.isEmpty() || estudiante.contains(filtroEstudiante))
+                && (filtroLibro.isEmpty() || libros.contains(filtroLibro))
+                && ("TODOS".equals(filtroEstado) || filtroEstado.equalsIgnoreCase(estado));
     }
 
     private void actualizarTablaPrestamosEstudiante() {
@@ -902,9 +1107,7 @@ public class PrestamosPanel extends JPanel {
         for (int i = 0; i < detalles.size(); i++) {
             DetallePrestamo detalle = detalles.obtener(i);
             int idLibro = detalle.getLibro() != null ? detalle.getLibro().getId() : 0;
-            String titulo = prestamoController.buscarLibroPorId(idLibro)
-                    .map(Libro::getTitulo)
-                    .orElse("Libro ID " + idLibro);
+            String titulo = obtenerTituloDetalle(detalle, idLibro);
             resumen.append("- ")
                     .append(titulo)
                     .append(" (cant. ")
@@ -927,15 +1130,24 @@ public class PrestamosPanel extends JPanel {
         for (int i = 0; i < detalles.size(); i++) {
             DetallePrestamo detalle = detalles.obtener(i);
             int idLibro = detalle.getLibro() != null ? detalle.getLibro().getId() : 0;
-            String titulo = prestamoController.buscarLibroPorId(idLibro)
-                    .map(Libro::getTitulo)
-                    .orElse("Libro ID " + idLibro);
+            String titulo = obtenerTituloDetalle(detalle, idLibro);
             if (i > 0) {
                 resumen.append(", ");
             }
             resumen.append(titulo);
         }
         return resumen.toString();
+    }
+
+    private String obtenerTituloDetalle(DetallePrestamo detalle, int idLibro) {
+        if (detalle.getLibro() != null
+                && detalle.getLibro().getTitulo() != null
+                && !detalle.getLibro().getTitulo().trim().isEmpty()) {
+            return detalle.getLibro().getTitulo();
+        }
+        return prestamoController.buscarLibroPorId(idLibro)
+                .map(Libro::getTitulo)
+                .orElse("Libro ID " + idLibro);
     }
 
     private void cargarDetallePrestamoEstudiante(int idPrestamo) {

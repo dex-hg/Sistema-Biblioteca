@@ -36,10 +36,45 @@ public class PrestamoController {
     }
 
     /**
+     * Lista estudiantes para consultas rápidas de la interfaz.
+     */
+    public ListaEnlazada<Estudiante> obtenerEstudiantes() {
+        return estudianteService.listarTodos();
+    }
+
+    /**
+     * Filtra estudiantes por coincidencia parcial en el nombre completo.
+     */
+    public ListaEnlazada<Estudiante> buscarEstudiantesPorNombre(String nombre) {
+        ListaEnlazada<Estudiante> estudiantes = estudianteService.listarTodos();
+        if (nombre == null || nombre.trim().isEmpty()) {
+            return estudiantes;
+        }
+        String criterio = nombre.trim().toLowerCase();
+        return estudiantes.filtrar(estudiante
+                -> estudiante.getNombreCompleto() != null
+                && estudiante.getNombreCompleto().toLowerCase().contains(criterio));
+    }
+
+    /**
      * Busca un libro por su ID único.
      */
     public Optional<Libro> buscarLibroPorId(int id) {
         return libroService.buscarLibroPorId(id);
+    }
+
+    /**
+     * Lista libros para consultas rápidas de la interfaz.
+     */
+    public ListaEnlazada<Libro> obtenerLibros() {
+        return libroService.buscarPorTitulo("");
+    }
+
+    /**
+     * Filtra libros por coincidencia parcial en el título.
+     */
+    public ListaEnlazada<Libro> buscarLibrosPorTitulo(String titulo) {
+        return libroService.buscarPorTitulo(titulo);
     }
 
     /**

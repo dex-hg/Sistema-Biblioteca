@@ -7,6 +7,7 @@ import biblioteca.dao.interfaces.PrestamoDAO;
 import biblioteca.modelo.Multa;
 import biblioteca.modelo.Prestamo;
 
+import java.time.LocalDate;
 import java.util.Optional;
 import biblioteca.estructuras.ListaEnlazada;
 
@@ -159,6 +160,7 @@ public class MultaService {
             }
 
             multa.setEstado("PAGADA");
+            multa.setFechaPago(LocalDate.now());
             return multaDAO.actualizar(multa);
         }
 
